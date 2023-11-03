@@ -1,17 +1,15 @@
 import pandas as pd
-import filter_samples
-import filter_oncokb_genes
+from data import Data
 
 
-def filter_gsm(input_file, sample_address, oncokb_file, cosmic_genes_fasta, cosmic_transcripts):
-    sample_ids = filter_samples.filter_sample_file(sample_address)
-
-    cancer_gene_info = filter_oncokb_genes.filter_oncokb_file(oncokb_file, cosmic_genes_fasta, cosmic_transcripts)
+def extract_driver_gene_data_from_gsm(gsm_file, sample_data: Data, oncokb_to_cosmic: Data):
+    sample_ids = sample_data.get_data()
+    cancer_gene_info = oncokb_to_cosmic.get_data()
     cancer_genes = cancer_gene_info["COSMIC_GENE_ID"].tolist()
 
-    print("---Batch reading Genome Screens Mutant file from {address}---".format(address=input_file))
+    print("---Batch reading Genome Screens Mutant file from {address}---".format(address=gsm_file))
     df_list = []
-    for chunk in pd.read_csv(input_file, sep="\t", chunksize=100000):
+    for chunk in pd.read_csv(gsm_file, sep="\t", chunksize=100000):
         chunk = chunk.loc[(chunk["COSMIC_GENE_ID"].isin(cancer_genes)) &
                           (chunk["COSMIC_SAMPLE_ID"].isin(sample_ids)) &
                           (chunk['HGVSG'].str.strip().str[-2] == '>')]

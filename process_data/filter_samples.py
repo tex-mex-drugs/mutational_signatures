@@ -1,10 +1,9 @@
 import pandas as pd
+from data import Data
 
 
-def filter_sample_file(input_file):
-    print("---Reading cosmic samples file from {address}---".format(address=input_file))
-    samples = pd.read_csv(input_file, sep="\t")
-    print(samples.shape)
+def filter_sample_file(sample_data: Data):
+    samples = sample_data.get_data()
 
     print("---Restricting samples to whole genome/exome screens and primary tumour sources---")
     samples = samples.loc[((samples["WHOLE_GENOME_SCREEN"] == "y") | (samples["WHOLE_EXOME_SCREEN"] == "y")) & (
