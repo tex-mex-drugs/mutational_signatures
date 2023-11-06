@@ -1,5 +1,13 @@
 import pandas as pd
-from data import Data
+from data import Data, deal_with_data
+
+
+class CosmicTranscripts:
+    TRANSCRIPT_ACCESSION = 'TRANSCRIPT_ACCESSION'
+    COSMIC_GENE_ID = 'COSMIC_GENE_ID'
+    STRAND = 'STRAND'
+    BIOTYPE = 'BIOTYPE'
+    IS_CANONICAL = 'IS_CANONICAL'
 
 
 class FastaMetadata:
@@ -28,11 +36,17 @@ class FastaMetadata:
         if metadata.shape[0] == 0:
             raise ValueError("Cannot find metadata for ensembl transcript {enst} in cosmic transcript data"
                              .format(enst=self.transcript))
-        self.cosmic_gene_id = metadata.iloc[0]["COSMIC_GENE_ID"]
-        self.is_canonical = metadata.iloc[0]["IS_CANONICAL"]
+        self.cosmic_gene_id = metadata.iloc[0][CosmicTranscripts.COSMIC_GENE_ID]
+        self.is_canonical = metadata.iloc[0][CosmicTranscripts.IS_CANONICAL]
 
 
-class TranscriptInformation:
+class TranscriptInfo:
+    GENE_SYMBOL = 'GENE_SYMBOL'
+    ENSEMBL_TRANSCRIPT = 'ENSEMBL_TRANSCRIPT'
+    GENE_LENGTH = 'GENE_LENGTH'
+    COSMIC_GENE_ID = 'COSMIC_GENE_ID'
+    IS_CANONICAL = 'IS_CANONICAL'
+
     def __init__(self):
         self.gene_list = []
         self.transcript_list = []
@@ -51,25 +65,26 @@ class TranscriptInformation:
 
     def to_dataframe(self):
         print("---Assembling transcript information into a dataframe---")
-        df = pd.DataFrame(self.gene_list, columns=["GENE_SYMBOL"])
-        df["ENSEMBL_TRANSCRIPT"] = self.transcript_list
-        df["GENE_LENGTH"] = self.gene_length_list
-        df["COSMIC_GENE_ID"] = self.gene_id_list
-        df["IS_CANONICAL"] = self.is_canonical_list
+        df = pd.DataFrame(self.gene_list, columns=[self.GENE_SYMBOL])
+        df[self.ENSEMBL_TRANSCRIPT] = self.transcript_list
+        df[self.GENE_LENGTH] = self.gene_length_list
+        df[self.COSMIC_GENE_ID] = self.gene_id_list
+        df[self.IS_CANONICAL] = self.is_canonical_list
         return df
 
 
 # input cosmic_transcripts of form: TRANSCRIPT_ACCESSION COSMIC_GENE_ID	STRAND BIOTYPE IS_CANONICAL
 # returning df of form: GENE_SYMBOL ENSEMBL_TRANSCRIPT GENE_LENGTH COSMIC_GENE_ID IS_CANONICAL
-def get_gene_lengths(cosmic_genes_fasta, cosmic_transcripts: Data):
+def get_gene_lengths(cosmic_genes_fasta, cosmic_transcripts: Data, output_file=""):
     transcripts = cosmic_transcripts.get_data()
     print("---Stripping transcripts of version information---")
-    transcripts["STRIPPED_TRANSCRIPTS"] = transcripts.apply(lambda x: x["TRANSCRIPT_ACCESSION"].split(".")[0], axis=1)
+    transcripts["STRIPPED_TRANSCRIPTS"] = (
+        transcripts.apply(lambda x: x[CosmicTranscripts.TRANSCRIPT_ACCESSION].split(".")[0], axis=1))
     print(transcripts.shape)
 
     print("---Opening cosmic_genes fasta file {address}---".format(address=cosmic_genes_fasta))
     with open(cosmic_genes_fasta, "r") as f:
-        transcript_info = TranscriptInformation()
+        transcript_info = TranscriptInfo()
         metadata = FastaMetadata(transcripts)
         i = 0
         for line in f:
@@ -82,18 +97,18 @@ def get_gene_lengths(cosmic_genes_fasta, cosmic_transcripts: Data):
                 transcript_info.add_data(metadata)
     df = transcript_info.to_dataframe()
     print("---Finished processing fasta file---")
-    return cosmic_transcripts.return_data(df)
+    return deal_with_data(df, "transcript information", output_file)
 
 
-def filter_oncokb_file(original_oncokb: Data, transcripts: Data):
-    transcript_info = transcripts.get_data()
+def filter_oncokb_file(original_oncokb: Data, known_transcripts: Data, output_file=""):
+    transcript_info = known_transcripts.get_data()
     oncokb_df = original_oncokb.get_data()
 
     print("---Retrieving transcript lists from each database---")
     oncokb_transcript_list = oncokb_df["ensembl_transcript_id"].drop_duplicates().tolist()
-    cosmic_transcripts = transcript_info["ENSEMBL_TRANSCRIPT"].drop_duplicates().tolist()
+    cosmic_transcripts = transcript_info[TranscriptInfo.ENSEMBL_TRANSCRIPT].drop_duplicates().tolist()
 
-    transcripts = []
+    known_transcripts = []
     unknown_transcripts = []
     i = 0
     for transcript in oncokb_transcript_list:
@@ -101,7 +116,7 @@ def filter_oncokb_file(original_oncokb: Data, transcripts: Data):
         if i % 100 == 0:
             print("---Processing {index}th transcript---".format(index=i))
         if transcript in cosmic_transcripts:
-            transcripts.append(transcript)
+            known_transcripts.append(transcript)
         else:
             unknown_transcripts.append(transcript)
     print("---Finished processing all oncokb transcripts---")
@@ -109,21 +124,19 @@ def filter_oncokb_file(original_oncokb: Data, transcripts: Data):
         print("WARN ---{i} genes in the oncokb list had no clear match in the cosmic list. "
               "Please check that code is running correctly---".format(i=len(unknown_transcripts)))
     print("---Creating final database---")
-    df = transcript_info.loc[transcript_info["ENSEMBL_TRANSCRIPT"].isin(transcripts)].copy(deep=True)
+    df = transcript_info.loc[transcript_info[TranscriptInfo.ENSEMBL_TRANSCRIPT].isin(known_transcripts)].copy(deep=True)
     print(df.shape)
-    return original_oncokb.return_data(df)
+    return deal_with_data(df, "oncokb database in cosmic format", output_file)
 
 
 oncokb_data = Data("../originalDatabases/oncokb_cancer_gene_census.tsv",
-                   "../filteredDatabases/oncokb_to_cosmic.tsv",
                    "oncokb data")
 
 cosmic_transcript_data = Data("../originalDatabases/transcripts.tsv",
                               "../filteredDatabases/transcript_information.tsv"
                               "cosmic_transcript_info")
 
-transcript_data = Data(output_file="../filteredDatabases/transcript_information.tsv",
-                       acquisition_function=get_gene_lengths("../originalDatabases/cosmic_genes.fasta",
+transcript_data = Data(acquisition_function=get_gene_lengths("../originalDatabases/cosmic_genes.fasta",
                                                              cosmic_transcript_data))
 
-filter_oncokb_file(oncokb_data, transcript_data)
+filter_oncokb_file(oncokb_data, transcript_data, output_file="../filteredDatabases/oncokb_to_cosmic.tsv")

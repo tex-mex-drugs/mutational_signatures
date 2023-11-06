@@ -1,13 +1,23 @@
-def prioritise_exon_aa(row):
+import pandas as pd
+
+
+# prioritise canonical transcript, then prioritise in exon mutations
+def prioritise_transcripts(row: pd.Series, transcript_information: pd.DataFrame):
     aa_sub = row.MUTATION_AA
-    if aa_sub == "p.?":
+    transcript = row.TRANSCRIPT_ACCESSION
+    transcript_info = transcript_information.loc[transcript_information["ENSEMBL_TRANSCRIPT"] == transcript]
+    if transcript_info.shape[0] == 0:
+        raise ValueError("No transcript information found for {transcript}".format(transcript=transcript))
+    if transcript_info.iloc[0]["IS_CANONICAL"] == "y":
+        return 0
+    if aa_sub != "p.?":
         return 1
-    return 0
+    return 2
 
 
 # Get rid of mutations that aren't of interest, i.e. p.?, synonymous, and stop lost
 def filter_mutation_aa(row):
-    mutation_aa = row["MUTATION_AA"]
+    mutation_aa = row[GSM.MUTATION_AA]
     # Filter out stop lost mutations
     if "ext" in mutation_aa:
         return False
