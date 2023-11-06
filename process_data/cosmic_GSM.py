@@ -1,5 +1,6 @@
 from data import Data
-from pandas_tools import batch
+from pandas_tools import batch_read
+from pandas_tools.column_operations import count_rows, remove_excessive_count
 
 
 class GSM:
@@ -47,13 +48,15 @@ def extract_driver_gene_data_from_gsm(gsm_file, sample_data: Data, oncokb_to_cos
                                       100000,
                                       "Genome Screens Mutant")
 
-    print("---Removing samples with excessive mutations---")
-    gsm[ExtraGsmColumns.MUTATION_COUNT] = gsm.groupby(GSM.COSMIC_SAMPLE_ID)[GSM.GENOMIC_MUTATION_ID].transform('nunique')
-    gsm = gsm.loc[gsm[ExtraGsmColumns.MUTATION_COUNT] <= 1000]
-    print(gsm.shape)
+    gsm = remove_excessive_count(gsm,
+                                 "Removing samples with excessive mutations",
+                                 GSM.COSMIC_SAMPLE_ID,
+                                 GSM.GENOMIC_MUTATION_ID,
+                                 0,
+                                 1000)
 
-    gsm[ExtraGsmColumns.SAMPLE_COUNT] = gsm.groupby(GSM.COSMIC_PHENOTYPE_ID)[GSM.COSMIC_SAMPLE_ID].transform("nunique")
-    gsm[ExtraGsmColumns.RESIDUE_COUNT] = gsm.groupby(GSM.COSMIC_PHENOTYPE_ID)[GSM.MUTATION_AA].transform("nunique")
+    count_rows(gsm, [GSM.COSMIC_PHENOTYPE_ID], GSM.COSMIC_SAMPLE_ID, ExtraGsmColumns.SAMPLE_COUNT)
+    count_rows(gsm, [GSM.COSMIC_PHENOTYPE_ID], GSM.MUTATION_AA, ExtraGsmColumns.RESIDUE_COUNT)
 
     print("---Finished processing GSM file---")
     return gsm
