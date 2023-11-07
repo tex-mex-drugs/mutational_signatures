@@ -1,10 +1,12 @@
 import pandas as pd
 
+from data_frame_columns.Cosmic import GSM
+
 
 # prioritise canonical transcript, then prioritise in exon mutations
 def prioritise_transcripts(row: pd.Series, transcript_information: pd.DataFrame):
-    aa_sub = row.MUTATION_AA
-    transcript = row.TRANSCRIPT_ACCESSION
+    aa_sub = row[GSM.MUTATION_AA]
+    transcript = row[GSM.TRANSCRIPT_ACCESSION]
     transcript_info = transcript_information.loc[transcript_information["ENSEMBL_TRANSCRIPT"] == transcript]
     if transcript_info.shape[0] == 0:
         raise ValueError("No transcript information found for {transcript}".format(transcript=transcript))

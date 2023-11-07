@@ -12,15 +12,19 @@ class Data:
 
     def get_data(self):
         if self.input_present:
-            print("---Reading {description} from file: {address}---"
-                  .format(description=self.df_description, address=self.input_file))
-            df = pd.read_csv(self.input_file, sep="\t")
-            print("---{description} shape: {shape}---"
-                  .format(description=self.df_description, shape=df.shape))
-            return df
+            return read_from_file(self.input_file, self.df_description)
         else:
             df = self.acquisition_function.call()
             return df
+
+
+def read_from_file(input_file: str, df_description):
+    print("---Reading {description} from file: {address}---"
+          .format(description=df_description, address=input_file))
+    df = pd.read_csv(input_file, sep="\t")
+    print("---{description} shape: {shape}---"
+          .format(description=df_description, shape=df.shape))
+    return df
 
 
 def deal_with_data(df: pd.DataFrame, output_file="", df_description="dataframe"):

@@ -1,21 +1,14 @@
+import pandas as pd
 from scipy import stats
 from scipy.stats import binom
+
+from data_frame_columns.Extra import ExtraGsmColumns
 from pandas_tools.column_operations import *
+from pandas_tools.data import Data
 from pandas_tools.row_operations import *
-from process_data import data
-from process_data.cosmic_GSM import GSM
-from process_data.oncokb_genes import TranscriptInfo
 from pandas_tools.row_operations import filter_mutation_aa
-
-
-class ExtraGsmColumns:
-    RESIDUE_COUNT = "RESIDUE_COUNT"
-    PROPORTION = "PROPORTION"
-    SAMPLE_COUNT = "SAMPLE_COUNT"
-    TOTAL_MUTATIONS = "TOTAL_MUTATIONS"
-    POSSIBLE_SUBSTITUTIONS = "POSSIBLE_SUBSTITUTIONS"
-    PROBABILITY = "PROBABILITY"
-    BENJAMINI_HOCHBERG = "BENJAMINI_HOCHBERG"
+from pandas_tools.data import read_from_file, deal_with_data
+from process_data.cosmic_GSM import process_driver_gene_data_from_gsm
 
 
 # Cosmic mutation data will often duplicate rows but with a different gene transcript.
@@ -32,15 +25,13 @@ def remove_extraneous_transcripts(gsm: pd.DataFrame, cancer_gene_info: pd.DataFr
     return gsm
 
 
-def acquire_driver_gene_mutations(input_file, sample: data.Data, census_data: data.Data):
-    sample_ids = sample.get_data()
+def acquire_driver_gene_mutations(gsm_input: str, sample_input: str, cgc_input: str):
+    sample_ids = read_from_file(sample_input, "cosmic sample")
     cancer_gene_info = census_data.get_data()
 
     cancer_genes = cancer_gene_info[TranscriptInfo.COSMIC_GENE_ID].tolist()
 
-    print("---Reading Genome Screens Mutant file from {address}---".format(address=input_file))
-    gsm = pd.read_csv(input_file, sep="\t")
-    print(gsm.shape)
+    gsm = data.read_from_file(input_file, "Genome Screens Mutant file")
 
     print("---Restricting to only known cancer causing genes---")
     gsm = gsm.loc[gsm[GSM.COSMIC_GENE_ID].isin(cancer_genes)].copy(deep=True)
@@ -94,10 +85,7 @@ def residue_probability(row, cancer_gene_census):
     return probability_over_k
 
 
-def calculate_probabilities(gsm_data: data.Data, cancer_gene_data: data.Data, output):
-    gsm = gsm_data.get_data()
-    cgc = cancer_gene_data.get_data()
-
+def calculate_probabilities(gsm: pd.DataFrame, cgc: pd.DataFrame, output):
     print("---Calculating total number of point substitutions per phenotype, gene pair---")
     count_rows(gsm,
                [GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID],
@@ -146,35 +134,62 @@ def calculate_probabilities(gsm_data: data.Data, cancer_gene_data: data.Data, ou
                            lower_threshold=0.03,
                            count_type=max)
     print(gsm.shape)
+    mutation_df = creating_mutation_dataframe(gsm, cgc)
+    deal_with_data(mutation_df, output, "predicted driver mutations")
 
+
+def creating_mutation_dataframe(df: pd.DataFrame, cancer_gene_census: pd.DataFrame):
     print("---Creating database of unique amino acid substitutions per phenotype, gene pair---")
-    mutations_df = gsm[[GSM.COSMIC_PHENOTYPE_ID, GSM.GENE_SYMBOL, GSM.COSMIC_GENE_ID, GSM.GENOMIC_MUTATION_ID, 
-                        GSM.MUTATION_AA, GSM.MUTATION_DESCRIPTION, ExtraGsmColumns.RESIDUE_COUNT,
-                        ExtraGsmColumns.POSSIBLE_SUBSTITUTIONS, ExtraGsmColumns.TOTAL_MUTATIONS]].copy(deep=True)
+    mutations_df = df[[GSM.COSMIC_PHENOTYPE_ID, GSM.GENE_SYMBOL, GSM.COSMIC_GENE_ID, GSM.GENOMIC_MUTATION_ID,
+                       GSM.MUTATION_AA, GSM.MUTATION_DESCRIPTION, ExtraGsmColumns.RESIDUE_COUNT,
+                       ExtraGsmColumns.POSSIBLE_SUBSTITUTIONS, ExtraGsmColumns.TOTAL_MUTATIONS]].copy(deep=True)
     mutations_df.drop_duplicates(inplace=True)
     print(mutations_df.shape)
 
     print("---Calculating null hypothesis probabilities of amino acid substitutions---")
-    mutations_df[ExtraGsmColumns.PROBABILITY] = mutations_df.apply(lambda x: residue_probability(x, cgc), axis=1)
+    create_column_from_apply(mutations_df,
+                             lambda x: residue_probability(x, cancer_gene_census),
+                             ExtraGsmColumns.PROBABILITY)
     print(mutations_df.shape)
 
+    # FIXME this doesn't appear to be gene/phenotype specific
     print("---Calculating the Benjamini Hochberg correction---")
-    mutations_df[ExtraGsmColumns.BENJAMINI_HOCHBERG] = (
-        stats.false_discovery_control(mutations_df[ExtraGsmColumns.PROBABILITY].tolist()))
+    mutations_df.sort_values(by=[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID], inplace=True)
+    ben_hoch_groups = (mutations_df.groupby([GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID])[ExtraGsmColumns.PROBABILITY]
+                       .transform(stats.false_discovery_control))
+    mutations_df[ExtraGsmColumns.BENJAMINI_HOCHBERG] = [i for sublist in ben_hoch_groups for i in sublist]
     print(mutations_df.shape)
 
     print("---Removing mutations that aren't statistically significant---")
     mutations_df = mutations_df.loc[mutations_df[ExtraGsmColumns.BENJAMINI_HOCHBERG] <= 0.05].copy(deep=True)
     print(mutations_df.shape)
 
-    print("---Writing predicted driver mutations to file {address}---".format(address=output))
     mutations_df.sort_values(by=[GSM.GENE_SYMBOL, GSM.COSMIC_PHENOTYPE_ID, GSM.MUTATION_AA], inplace=True)
-    mutations_df.to_csv(output, sep="\t")
     print("---Finished processing mutations---")
-    return
+    return mutations_df
 
 
-calculate_probabilities("../originalDatabases/original_GSM.tsv",
-                        "../filteredDatabases/oncokb_genes.tsv",
-                        "../originalDatabases/originalSamples.tsv",
-                        "../filteredDatabases/predictedDriverMutations.tsv")
+def predict_driver_mutations(filtered_gsm_file="",
+                             original_gsm_file="",
+                             sample_input="",
+                             original_oncokb_input="",
+                             processed_transcript_input="",
+                             cosmic_genes_fasta="",
+                             cosmic_transcripts_input="",
+                             oncokb_to_cosmic_input=""):
+    if filtered_gsm_file != "":
+        gsm = read_from_file(filtered_gsm_file, "mutation data for driver genes")
+    else:
+        gsm = process_driver_gene_data_from_gsm(original_gsm_file,
+                                                sample_input,
+                                                original_oncokb_input,
+                                                processed_transcript_input,
+                                                cosmic_genes_fasta,
+                                                cosmic_transcripts_input,
+                                                oncokb_to_cosmic_input)
+
+# calculate_probabilities(data.Data("../filteredDatabases/filteredGSM.tsv",
+#                                   "filtered GSM"),
+#                         data.Data("../filteredDatabases/oncokb_to_cosmic.tsv",
+#                                   ""),
+#                         "../filteredDatabases/predictedDriverMutations.tsv")
