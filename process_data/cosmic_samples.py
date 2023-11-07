@@ -3,7 +3,6 @@ import pandas as pd
 from pandas_tools.data import read_from_file, deal_with_data
 
 
-# FIXME currently not writing filtered samples to file anywhere
 class CosmicSamples:
     def __init__(self, input_file="", output_file=""):
         self.input_file = input_file
