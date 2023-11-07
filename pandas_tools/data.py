@@ -1,23 +1,6 @@
 import pandas as pd
 
 
-class Data:
-    def __init__(self, input_file="", df_description="dataframe", acquisition_function=None):
-        if acquisition_function is None and input_file == "":
-            raise ValueError("Data requires at least one of input_file and acquisition_function to be initialised")
-        self.input_present = input_file != ""
-        self.input_file = input_file
-        self.acquisition_function = acquisition_function
-        self.df_description = df_description
-
-    def get_data(self):
-        if self.input_present:
-            return read_from_file(self.input_file, self.df_description)
-        else:
-            df = self.acquisition_function.call()
-            return df
-
-
 def read_from_file(input_file: str, df_description):
     print("---Reading {description} from file: {address}---"
           .format(description=df_description, address=input_file))

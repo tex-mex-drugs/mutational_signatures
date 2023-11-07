@@ -1,7 +1,7 @@
 import pandas as pd
 
-from process_data.cosmic_transcripts import TranscriptInfo, process_cosmic_transcripts
 from pandas_tools.data import read_from_file, deal_with_data
+from process_data.cosmic_transcripts import TranscriptInfo, process_cosmic_transcripts
 
 
 def convert_oncokb_to_cosmic_format(oncokb_df: pd.DataFrame,
