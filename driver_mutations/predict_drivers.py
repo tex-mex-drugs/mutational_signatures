@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from scipy import stats
 from scipy.stats import binom
 
@@ -131,11 +133,16 @@ def predict_driver_mutations(original_gsm_file="",
                              cosmic_genes_fasta="",
                              cosmic_transcripts_input="",
                              oncokb_to_cosmic_input="",
-                             output_file=""):
+                             output_file="",
+                             gsm_output="",
+                             sample_output="",
+                             oncokb_output="",
+                             cosmic_transcript_output=""):
+    temp_path = "temp_cgc.tsv"
     if oncokb_to_cosmic_input != "":
         cgc = read_from_file(oncokb_to_cosmic_input, "oncokb driver genes in cosmic format")
     else:
-        oncokb_to_cosmic_input = "temp_cgc.tsv"
+        oncokb_to_cosmic_input = cosmic_transcript_output if cosmic_transcript_output != "" else temp_path
         cgc = process_oncokb_file(original_oncokb_input,
                                   processed_transcript_input,
                                   cosmic_genes_fasta,
@@ -151,12 +158,12 @@ def predict_driver_mutations(original_gsm_file="",
                                                 processed_transcript_input,
                                                 cosmic_genes_fasta,
                                                 cosmic_transcripts_input,
-                                                oncokb_to_cosmic_input)
+                                                oncokb_to_cosmic_input,
+                                                gsm_output,
+                                                sample_output,
+                                                oncokb_output,
+                                                cosmic_transcript_output)
     mutation_df = calculate_probabilities(gsm, cgc)
+    if oncokb_to_cosmic_input == temp_path:
+        Path.unlink(Path(temp_path))
     deal_with_data(mutation_df, output_file, "predicted driver mutations")
-
-# calculate_probabilities(data.Data("../filteredDatabases/filteredGSM.tsv",
-#                                   "filtered GSM"),
-#                         data.Data("../filteredDatabases/oncokb_to_cosmic.tsv",
-#                                   ""),
-#                         "../filteredDatabases/predictedDriverMutations.tsv")

@@ -37,11 +37,14 @@ def process_oncokb_file(original_oncokb_input: str,
                         transcript_info_input="",
                         cosmic_genes_fasta_input="",
                         cosmic_transcripts_input="",
-                        output_file=""):
+                        output_file="",
+                        cosmic_transcript_output=""):
     if transcript_info_input != "":
         transcript_info = read_from_file(transcript_info_input, "transcript information")
     else:
-        transcript_info = process_cosmic_transcripts(cosmic_genes_fasta_input, cosmic_transcripts_input)
+        transcript_info = process_cosmic_transcripts(cosmic_genes_fasta_input,
+                                                     cosmic_transcripts_input,
+                                                     cosmic_transcript_output)
     oncokb_df = read_from_file(original_oncokb_input, "oncokb cancer gene census")
     return convert_oncokb_to_cosmic_format(oncokb_df,
                                            transcript_info,

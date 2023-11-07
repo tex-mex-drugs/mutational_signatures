@@ -59,15 +59,20 @@ def process_driver_gene_data_from_gsm(gsm_file,
                                       cosmic_genes_fasta="",
                                       cosmic_transcripts_input="",
                                       oncokb_to_cosmic_input="",
-                                      gsm_output=""):
+                                      gsm_output="",
+                                      sample_output="",
+                                      oncokb_output="",
+                                      cosmic_transcript_output=""):
     if oncokb_to_cosmic_input != "":
         oncokb_to_cosmic = read_from_file(oncokb_to_cosmic_input, "oncokb data in cosmic format")
     else:
         oncokb_to_cosmic = process_oncokb_file(original_oncokb_input,
                                                processed_transcript_input,
                                                cosmic_genes_fasta,
-                                               cosmic_transcripts_input)
-    sample = CosmicSamples(sample_input)
+                                               cosmic_transcripts_input,
+                                               oncokb_output,
+                                               cosmic_transcript_output)
+    sample = CosmicSamples(sample_input, sample_output)
     sample_ids = sample.retrieve_sample_ids()
     driver_genes = extract_driver_gene_data_from_gsm(gsm_file,
                                                      sample_ids,
