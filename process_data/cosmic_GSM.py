@@ -5,7 +5,6 @@ from data_frame_columns.Cosmic import GSM
 from pandas_tools.batch_read import batch_read_and_filter
 from pandas_tools.column_operations import remove_excessive_count
 from pandas_tools.data import read_from_file, deal_with_data
-from pandas_tools.row_operations import prioritise_transcripts
 from process_data.oncokb_genes import process_oncokb_file
 
 
@@ -13,6 +12,20 @@ def gsm_driver_filter(cancer_genes, sample_ids, chunk):
     return chunk.loc[(chunk[GSM.COSMIC_GENE_ID].isin(cancer_genes)) &
                      (chunk[GSM.COSMIC_SAMPLE_ID].isin(sample_ids)) &
                      (chunk[GSM.HGVSG].str.strip().str[-2] == '>')]
+
+
+# prioritise canonical transcript, then prioritise in exon mutations
+def prioritise_transcripts(row: pd.Series, transcript_information: pd.DataFrame):
+    aa_sub = row[GSM.MUTATION_AA]
+    transcript = row[GSM.TRANSCRIPT_ACCESSION]
+    transcript_info = transcript_information.loc[transcript_information["ENSEMBL_TRANSCRIPT"] == transcript]
+    if transcript_info.shape[0] == 0:
+        raise ValueError("No transcript information found for {transcript}".format(transcript=transcript))
+    if transcript_info.iloc[0]["IS_CANONICAL"] == "y":
+        return 0
+    if aa_sub != "p.?":
+        return 1
+    return 2
 
 
 # Cosmic mutation data will often duplicate rows but with a different gene transcript.

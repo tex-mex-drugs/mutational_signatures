@@ -3,16 +3,26 @@ from pathlib import Path
 from scipy import stats
 from scipy.stats import binom
 
+from data_frame_columns.Cosmic import GSM
 from data_frame_columns.Extra import ExtraGsmColumns
 from pandas_tools.column_operations import *
 from pandas_tools.data import read_from_file, deal_with_data
-from pandas_tools.row_operations import *
 from process_data.cosmic_GSM import process_driver_gene_data_from_gsm
 from process_data.cosmic_transcripts import TranscriptInfo
 from process_data.oncokb_genes import process_oncokb_file
 
 
-# CALCULATING PROBABILITIES
+# Get rid of mutations that aren't of interest, i.e. p.?, synonymous, and stop lost
+def filter_mutation_aa(row):
+    mutation_aa = row[GSM.MUTATION_AA]
+    # Filter out stop lost mutations
+    if "ext" in mutation_aa:
+        return False
+    # Filter out anonymous mutations and intron variants
+    if mutation_aa[-1] == "=" or mutation_aa[-1] == "?":
+        return False
+    return True
+
 
 # Find probability that the number of mutations causing this amino acid substitution is >= observed
 # given no of mutations affecting gene, using the null hypothesis (that every mutation has an equal chance of occurring)
