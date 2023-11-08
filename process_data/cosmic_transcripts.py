@@ -76,7 +76,7 @@ def get_gene_lengths(cosmic_genes_fasta, transcripts: pd.DataFrame):
     print("---Opening cosmic_genes fasta file {address}---".format(address=cosmic_genes_fasta))
     with open(cosmic_genes_fasta, "r") as f:
         transcript_info = TranscriptInfo()
-        metadata = FastaMetadata(transcripts)
+        metadata = FastaMetadata(transcripts=transcripts)
         i = 0
         for line in f:
             # looking for metadata lines e.g. >OR4F5 ENST00000335137.4 1:65419-71585(+)
@@ -84,14 +84,15 @@ def get_gene_lengths(cosmic_genes_fasta, transcripts: pd.DataFrame):
                 i += 1
                 if i % 1000 == 0:
                     print("---Processing {index}th transcript---".format(index=i))
-                metadata.process_line(line)
-                transcript_info.add_data(metadata)
+                metadata.process_line(line=line)
+                transcript_info.add_data(metadata=metadata)
     df = transcript_info.to_dataframe()
     print("---Finished processing fasta file---")
     return df
 
 
 def process_cosmic_transcripts(cosmic_genes_fasta, cosmic_transcripts_input: str, output_file=""):
-    transcripts = read_from_file(cosmic_transcripts_input, "cosmic transcripts file")
-    df = get_gene_lengths(cosmic_genes_fasta, transcripts)
-    return deal_with_data(df, output_file, "transcript information")
+    transcripts = read_from_file(input_file=cosmic_transcripts_input,
+                                 df_description="cosmic transcripts file")
+    df = get_gene_lengths(cosmic_genes_fasta=cosmic_genes_fasta, transcripts=transcripts)
+    return deal_with_data(df=df, output_file=output_file, df_description="transcript information")

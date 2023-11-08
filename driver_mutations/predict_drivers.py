@@ -1,3 +1,4 @@
+import os.path
 from pathlib import Path
 
 from scipy import stats
@@ -84,11 +85,11 @@ def creating_mutation_dataframe(df: pd.DataFrame, cancer_gene_census: pd.DataFra
 
 def calculate_probabilities(gsm: pd.DataFrame, cgc: pd.DataFrame):
     print("---Calculating total number of point substitutions per phenotype, gene pair---")
-    count_rows(gsm,
-               [GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID],
-               GSM.COSMIC_GENE_ID,
-               ExtraGsmColumns.TOTAL_MUTATIONS,
-               "count")
+    count_rows(df=gsm,
+               grouped_columns=[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID],
+               counted_column=GSM.COSMIC_GENE_ID,
+               new_column=ExtraGsmColumns.TOTAL_MUTATIONS,
+               count_type="count")
     print(gsm.shape)
 
     print("---Removing intron variants, synonymous mutations and stop loss mutations---")
@@ -98,41 +99,83 @@ def calculate_probabilities(gsm: pd.DataFrame, cgc: pd.DataFrame):
 
     print("---Calculating the number of point substitutions "
           "for each distinct amino acid substitution per phenotype, gene pair---")
-    count_rows(gsm,
-               [GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID, GSM.MUTATION_AA],
-               GSM.COSMIC_SAMPLE_ID,
-               ExtraGsmColumns.RESIDUE_COUNT)
+    count_rows(df=gsm,
+               grouped_columns=[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID, GSM.MUTATION_AA],
+               counted_column=GSM.COSMIC_SAMPLE_ID,
+               new_column=ExtraGsmColumns.RESIDUE_COUNT)
     print(
         "---Calculating the number of possible point substitutions that result in the same amino acid substitution---")
-    count_rows(gsm,
-               [GSM.COSMIC_GENE_ID, GSM.MUTATION_AA],
-               GSM.HGVSG,
-               ExtraGsmColumns.POSSIBLE_SUBSTITUTIONS)
+    count_rows(df=gsm,
+               grouped_columns=[GSM.COSMIC_GENE_ID, GSM.MUTATION_AA],
+               counted_column=GSM.HGVSG,
+               new_column=ExtraGsmColumns.POSSIBLE_SUBSTITUTIONS)
     print(gsm.shape)
 
     print("---Discarding mutations that aren't present in enough samples---")
-    count_rows(gsm,
-               [GSM.COSMIC_PHENOTYPE_ID],
-               GSM.COSMIC_SAMPLE_ID,
-               ExtraGsmColumns.SAMPLE_COUNT)
-    create_column_from_apply(gsm,
-                             lambda x: x[ExtraGsmColumns.RESIDUE_COUNT] / x[ExtraGsmColumns.SAMPLE_COUNT],
-                             ExtraGsmColumns.PROPORTION)
-    remove_excessive_count(gsm,
-                           "Max number of samples with residue should be bigger than 10",
-                           GSM.MUTATION_AA,
-                           ExtraGsmColumns.RESIDUE_COUNT,
+    count_rows(df=gsm,
+               grouped_columns=[GSM.COSMIC_PHENOTYPE_ID],
+               counted_column=GSM.COSMIC_SAMPLE_ID,
+               new_column=ExtraGsmColumns.SAMPLE_COUNT)
+    create_column_from_apply(df=gsm,
+                             row_function=lambda x: x[ExtraGsmColumns.RESIDUE_COUNT] / x[ExtraGsmColumns.SAMPLE_COUNT],
+                             new_column=ExtraGsmColumns.PROPORTION)
+    remove_excessive_count(df=gsm,
+                           description="Max number of samples with residue should be bigger than 10",
+                           grouped_column=GSM.MUTATION_AA,
+                           counted_column=ExtraGsmColumns.RESIDUE_COUNT,
                            lower_threshold=10,
                            count_type=max)
-    remove_excessive_count(gsm,
-                           "Max percentage of samples with residue should be more than 3%",
-                           GSM.MUTATION_AA,
-                           ExtraGsmColumns.PROPORTION,
+    remove_excessive_count(df=gsm,
+                           description="Max percentage of samples with residue should be more than 3%",
+                           grouped_column=GSM.MUTATION_AA,
+                           counted_column=ExtraGsmColumns.PROPORTION,
                            lower_threshold=0.03,
                            count_type=max)
     print(gsm.shape)
     mutation_df = creating_mutation_dataframe(gsm, cgc)
     return mutation_df
+
+
+def preconditions_for_calculating_driver_mutations(original_gsm_file="",
+                                                   filtered_gsm_file="",
+                                                   sample_input="",
+                                                   original_oncokb_input="",
+                                                   processed_transcript_input="",
+                                                   cosmic_genes_fasta="",
+                                                   cosmic_transcripts_input="",
+                                                   oncokb_to_cosmic_input="",
+                                                   output_file="",
+                                                   gsm_output="",
+                                                   sample_output="",
+                                                   oncokb_output="",
+                                                   cosmic_transcript_output=""):
+    # CANCER GENE CENSUS MUST BE CALCULATED
+    if not os.path.exists(oncokb_to_cosmic_input):
+        if not os.path.exists(original_oncokb_input):
+            raise ValueError("One of oncokb_to_cosmic_input and original_oncokb_input must exist")
+        if not os.path.exists(processed_transcript_input):
+            if not (os.path.exists(cosmic_genes_fasta) and os.path.exists(cosmic_transcripts_input)):
+                raise ValueError("If original_oncokb_input is provided, "
+                                 "one of processed_transcript_input or (cosmic_genes_fasta, cosmic_transcripts_input) "
+                                 "must exist")
+        elif os.path.exists(cosmic_transcript_output):
+            raise ValueError("Don't provide processed_transcript_input and cosmic_transcript_output")
+    elif os.path.exists(oncokb_output):
+        raise ValueError("Don't provide oncokb_output if oncokb_to_cosmic_input is provided")
+
+    # FILTERED GSM MUST BE CALCULATED
+    if not os.path.exists(filtered_gsm_file):
+        if not os.path.exists(original_gsm_file):
+            raise ValueError("One of filtered_gsm_file and original_gsm_file must exist")
+        if not os.path.exists(sample_input) or not os.path.exists(sample_output):
+            raise ValueError("If original_gsm_file is provided,"
+                             "one of sample_input and sample_output must exist")
+    elif os.path.exists(gsm_output):
+        raise ValueError("Don't provide filtered_gsm_file and gsm_output")
+
+    # OUTPUT MUST BE PROVIDED
+    if not os.path.exists(output_file):
+        raise ValueError("output_file must be provided")
 
 
 def predict_driver_mutations(original_gsm_file="",
@@ -173,31 +216,46 @@ def predict_driver_mutations(original_gsm_file="",
                                                   so=sample_output,
                                                   oo=oncokb_output,
                                                   cto=cosmic_transcript_output))
+
+    preconditions_for_calculating_driver_mutations(original_gsm_file,
+                                                   filtered_gsm_file,
+                                                   sample_input,
+                                                   original_oncokb_input,
+                                                   processed_transcript_input,
+                                                   cosmic_genes_fasta,
+                                                   cosmic_transcripts_input,
+                                                   oncokb_to_cosmic_input,
+                                                   output_file,
+                                                   gsm_output,
+                                                   sample_output,
+                                                   oncokb_output,
+                                                   cosmic_transcript_output)
+
     temp_path = "temp_cgc.tsv"
     if oncokb_to_cosmic_input != "":
-        cgc = read_from_file(oncokb_to_cosmic_input, "oncokb driver genes in cosmic format")
+        cgc = read_from_file(input_file=oncokb_to_cosmic_input, df_description="oncokb driver genes in cosmic format")
     else:
         oncokb_to_cosmic_input = cosmic_transcript_output if cosmic_transcript_output != "" else temp_path
-        cgc = process_oncokb_file(original_oncokb_input,
-                                  processed_transcript_input,
-                                  cosmic_genes_fasta,
-                                  cosmic_transcripts_input,
-                                  oncokb_to_cosmic_input)
+        cgc = process_oncokb_file(original_oncokb_input=original_oncokb_input,
+                                  transcript_info_input=processed_transcript_input,
+                                  cosmic_genes_fasta_input=cosmic_genes_fasta,
+                                  cosmic_transcripts_input=cosmic_transcripts_input,
+                                  output_file=oncokb_to_cosmic_input)
 
     if filtered_gsm_file != "":
-        gsm = read_from_file(filtered_gsm_file, "mutation data for driver genes")
+        gsm = read_from_file(input_file=filtered_gsm_file, df_description="mutation data for driver genes")
     else:
-        gsm = process_driver_gene_data_from_gsm(original_gsm_file,
-                                                sample_input,
-                                                original_oncokb_input,
-                                                processed_transcript_input,
-                                                cosmic_genes_fasta,
-                                                cosmic_transcripts_input,
-                                                oncokb_to_cosmic_input,
-                                                gsm_output,
-                                                sample_output,
-                                                oncokb_output,
-                                                cosmic_transcript_output)
+        gsm = process_driver_gene_data_from_gsm(gsm_file=original_gsm_file,
+                                                sample_input=sample_input,
+                                                original_oncokb_input=original_oncokb_input,
+                                                processed_transcript_input=processed_transcript_input,
+                                                cosmic_genes_fasta=cosmic_genes_fasta,
+                                                cosmic_transcripts_input=cosmic_transcripts_input,
+                                                oncokb_to_cosmic_input=oncokb_to_cosmic_input,
+                                                gsm_output=gsm_output,
+                                                sample_output=sample_output,
+                                                oncokb_output=oncokb_output,
+                                                cosmic_transcript_output=cosmic_transcript_output)
     mutation_df = calculate_probabilities(gsm, cgc)
     if oncokb_to_cosmic_input == temp_path:
         Path.unlink(Path(temp_path))

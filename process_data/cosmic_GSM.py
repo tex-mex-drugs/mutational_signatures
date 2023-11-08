@@ -47,20 +47,20 @@ def extract_driver_gene_data_from_gsm(gsm_file,
                                       cancer_gene_info: pd.DataFrame):
     cancer_genes = cancer_gene_info[GSM.COSMIC_GENE_ID].tolist()
 
-    gsm = batch_read_and_filter(gsm_file,
-                                gsm_driver_filter,
-                                [cancer_genes, sample_ids],
-                                100000,
-                                "Genome Screens Mutant")
+    gsm = batch_read_and_filter(input_file=gsm_file,
+                                chunk_filter=gsm_driver_filter,
+                                positional_arguments=[cancer_genes, sample_ids],
+                                chunk_size=100000,
+                                description="Genome Screens Mutant")
 
-    gsm = remove_extraneous_transcripts(gsm, cancer_gene_info)
+    gsm = remove_extraneous_transcripts(gsm=gsm, cancer_gene_info=cancer_gene_info)
 
-    gsm = remove_excessive_count(gsm,
-                                 "Removing samples with excessive mutations",
-                                 GSM.COSMIC_SAMPLE_ID,
-                                 GSM.GENOMIC_MUTATION_ID,
-                                 0,
-                                 1000)
+    gsm = remove_excessive_count(df=gsm,
+                                 description="Removing samples with excessive mutations",
+                                 grouped_column=GSM.COSMIC_SAMPLE_ID,
+                                 counted_column=GSM.GENOMIC_MUTATION_ID,
+                                 lower_threshold=0,
+                                 upper_threshold=1000)
     print("---Finished processing GSM file---")
     return gsm
 
@@ -77,17 +77,18 @@ def process_driver_gene_data_from_gsm(gsm_file,
                                       oncokb_output="",
                                       cosmic_transcript_output=""):
     if oncokb_to_cosmic_input != "":
-        oncokb_to_cosmic = read_from_file(oncokb_to_cosmic_input, "oncokb data in cosmic format")
+        oncokb_to_cosmic = read_from_file(input_file=oncokb_to_cosmic_input,
+                                          df_description="oncokb data in cosmic format")
     else:
-        oncokb_to_cosmic = process_oncokb_file(original_oncokb_input,
-                                               processed_transcript_input,
-                                               cosmic_genes_fasta,
-                                               cosmic_transcripts_input,
-                                               oncokb_output,
-                                               cosmic_transcript_output)
-    sample = CosmicSamples(sample_input, sample_output)
+        oncokb_to_cosmic = process_oncokb_file(original_oncokb_input=original_oncokb_input,
+                                               transcript_info_input=processed_transcript_input,
+                                               cosmic_genes_fasta_input=cosmic_genes_fasta,
+                                               cosmic_transcripts_input=cosmic_transcripts_input,
+                                               output_file=oncokb_output,
+                                               cosmic_transcript_output=cosmic_transcript_output)
+    sample = CosmicSamples(input_file=sample_input, output_file=sample_output)
     sample_ids = sample.retrieve_sample_ids()
-    driver_genes = extract_driver_gene_data_from_gsm(gsm_file,
-                                                     sample_ids,
-                                                     oncokb_to_cosmic)
-    return deal_with_data(driver_genes, gsm_output, "GSM restricted to driver genes")
+    driver_genes = extract_driver_gene_data_from_gsm(gsm_file=gsm_file,
+                                                     sample_ids=sample_ids,
+                                                     cancer_gene_info=oncokb_to_cosmic)
+    return deal_with_data(df=driver_genes, output_file=gsm_output, df_description="GSM restricted to driver genes")

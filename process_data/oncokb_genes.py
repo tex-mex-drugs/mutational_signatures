@@ -1,6 +1,7 @@
 import pandas as pd
 
 from pandas_tools.data import read_from_file, deal_with_data
+from data_frame_columns.OncoKb import Drivers
 from process_data.cosmic_transcripts import TranscriptInfo, process_cosmic_transcripts
 
 
@@ -8,7 +9,7 @@ def convert_oncokb_to_cosmic_format(oncokb_df: pd.DataFrame,
                                     transcript_info: pd.DataFrame,
                                     output_file=""):
     print("---Retrieving transcript lists from each database---")
-    oncokb_transcript_list = oncokb_df["ensembl_transcript_id"].drop_duplicates().tolist()
+    oncokb_transcript_list = oncokb_df[Drivers.ENSEMBL_TRANSCRIPT].drop_duplicates().tolist()
     cosmic_transcripts = transcript_info[TranscriptInfo.ENSEMBL_TRANSCRIPT].drop_duplicates().tolist()
 
     known_transcripts = []
@@ -30,7 +31,7 @@ def convert_oncokb_to_cosmic_format(oncokb_df: pd.DataFrame,
     df = transcript_info.loc[transcript_info[
         TranscriptInfo.ENSEMBL_TRANSCRIPT].isin(known_transcripts)].copy(deep=True)
     print(df.shape)
-    return deal_with_data(df, output_file, "oncokb database in cosmic format")
+    return deal_with_data(df=df, output_file=output_file, df_description="oncokb database in cosmic format")
 
 
 def process_oncokb_file(original_oncokb_input: str,
@@ -40,12 +41,12 @@ def process_oncokb_file(original_oncokb_input: str,
                         output_file="",
                         cosmic_transcript_output=""):
     if transcript_info_input != "":
-        transcript_info = read_from_file(transcript_info_input, "transcript information")
+        transcript_info = read_from_file(input_file=transcript_info_input, df_description="transcript information")
     else:
-        transcript_info = process_cosmic_transcripts(cosmic_genes_fasta_input,
-                                                     cosmic_transcripts_input,
-                                                     cosmic_transcript_output)
-    oncokb_df = read_from_file(original_oncokb_input, "oncokb cancer gene census")
-    return convert_oncokb_to_cosmic_format(oncokb_df,
-                                           transcript_info,
-                                           output_file)
+        transcript_info = process_cosmic_transcripts(cosmic_genes_fasta=cosmic_genes_fasta_input,
+                                                     cosmic_transcripts_input=cosmic_transcripts_input,
+                                                     output_file=cosmic_transcript_output)
+    oncokb_df = read_from_file(input_file=original_oncokb_input, df_description="oncokb cancer gene census")
+    return convert_oncokb_to_cosmic_format(oncokb_df=oncokb_df,
+                                           transcript_info=transcript_info,
+                                           output_file=output_file)

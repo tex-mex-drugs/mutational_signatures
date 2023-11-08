@@ -26,7 +26,11 @@ def remove_excessive_count(df: pd.DataFrame,
                            count_type='nunique'):
     row_count = "ROW_COUNT"
     print("---{desc}---".format(desc=description))
-    count_rows(df, [grouped_column], counted_column, row_count, count_type)
+    count_rows(df=df,
+               grouped_columns=[grouped_column],
+               counted_column=counted_column,
+               new_column=row_count,
+               count_type=count_type)
     if lower_threshold is not None:
         df = df.loc[(df[row_count] >= lower_threshold)].copy(deep=True)
     if upper_threshold is not None:
