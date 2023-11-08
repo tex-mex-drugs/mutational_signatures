@@ -30,7 +30,7 @@ def convert_oncokb_to_cosmic_format(oncokb_df: pd.DataFrame,
     df = transcript_info.loc[transcript_info[
         TranscriptInfo.ENSEMBL_TRANSCRIPT].isin(known_transcripts)].copy(deep=True)
     print(df.shape)
-    return deal_with_data(df, "oncokb database in cosmic format", output_file)
+    return deal_with_data(df, output_file, "oncokb database in cosmic format")
 
 
 def process_oncokb_file(original_oncokb_input: str,
@@ -49,9 +49,3 @@ def process_oncokb_file(original_oncokb_input: str,
     return convert_oncokb_to_cosmic_format(oncokb_df,
                                            transcript_info,
                                            output_file)
-
-
-process_oncokb_file("../originalDatabases/oncokb_cancer_gene_census.tsv",
-                    "../originalDatabases/cosmic_genes.fasta",
-                    "../originalDatabases/transcripts.tsv",
-                    output_file="../filteredDatabases/oncokb_to_cosmic.tsv")

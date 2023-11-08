@@ -94,4 +94,4 @@ def get_gene_lengths(cosmic_genes_fasta, transcripts: pd.DataFrame):
 def process_cosmic_transcripts(cosmic_genes_fasta, cosmic_transcripts_input: str, output_file=""):
     transcripts = read_from_file(cosmic_transcripts_input, "cosmic transcripts file")
     df = get_gene_lengths(cosmic_genes_fasta, transcripts)
-    return deal_with_data(df, "transcript information", output_file)
+    return deal_with_data(df, output_file, "transcript information")
