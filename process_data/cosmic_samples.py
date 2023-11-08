@@ -1,3 +1,5 @@
+import os.path
+
 import pandas as pd
 
 from pandas_tools.data import read_from_file, deal_with_data
@@ -5,6 +7,8 @@ from pandas_tools.data import read_from_file, deal_with_data
 
 class CosmicSamples:
     def __init__(self, input_file="", output_file=""):
+        if input_file == "" and output_file == "":
+            raise ValueError("Cannot create CosmicSample with no file information")
         self.input_file = input_file
         self.output_file = output_file
 
@@ -34,14 +38,16 @@ class CosmicSamples:
         return ids
 
     def filter_original_samples(self):
-        samples = read_from_file(self.input_file, "cosmic samples file")
-        filtered_samples = self.__filter_sample_dataframe(samples)
-        return deal_with_data(filtered_samples, self.output_file, "restricted cosmic samples")
+        samples = read_from_file(input_file=self.input_file, df_description="cosmic samples file")
+        filtered_samples = self.__filter_sample_dataframe(samples=samples)
+        return deal_with_data(df=filtered_samples,
+                              output_file=self.output_file,
+                              df_description="restricted cosmic samples")
 
     def retrieve_sample_ids(self):
-        if self.output_file != "":
-            samples = read_from_file(self.output_file, "restricted cosmic samples")
+        if self.output_file != "" and os.path.isfile(self.output_file):
+            samples = read_from_file(input_file=self.output_file, df_description="restricted cosmic samples")
             return self.__retrieve_ids(samples)
 
         filtered_samples = self.filter_original_samples()
-        return self.__retrieve_ids(filtered_samples)
+        return self.__retrieve_ids(filtered_samples=filtered_samples)

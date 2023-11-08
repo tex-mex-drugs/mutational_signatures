@@ -1,6 +1,6 @@
 import pandas as pd
 
-from cosmic_samples import CosmicSamples
+from process_data.cosmic_samples import CosmicSamples
 from data_frame_columns.Cosmic import GSM
 from pandas_tools.batch_read import batch_read_and_filter
 from pandas_tools.column_operations import remove_excessive_count
