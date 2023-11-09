@@ -9,7 +9,7 @@ from data_frame_columns.Extra import ExtraGsmColumns
 from pandas_tools.column_operations import *
 from pandas_tools.data import read_from_file, deal_with_data
 from process_data.cosmic_GSM import process_driver_gene_data_from_gsm
-from process_data.cosmic_transcripts import TranscriptInfo
+from process_data.cosmic_transcripts import TranscriptInfo, process_cosmic_transcripts
 from process_data.oncokb_genes import process_oncokb_file
 
 
@@ -136,139 +136,95 @@ def calculate_probabilities(gsm: pd.DataFrame, cgc: pd.DataFrame):
     return mutation_df
 
 
-def preconditions_for_calculating_driver_mutations(original_gsm_file="",
-                                                   filtered_gsm_file="",
-                                                   sample_input="",
-                                                   original_oncokb_input="",
-                                                   processed_transcript_input="",
-                                                   cosmic_genes_fasta="",
-                                                   cosmic_transcripts_input="",
-                                                   oncokb_to_cosmic_input="",
-                                                   output_file="",
-                                                   gsm_output="",
-                                                   sample_output="",
-                                                   oncokb_output="",
-                                                   cosmic_transcript_output=""):
-    # CANCER GENE CENSUS MUST BE CALCULATED
-    if not os.path.exists(oncokb_to_cosmic_input):
-        if not os.path.exists(original_oncokb_input):
-            raise ValueError("One of oncokb_to_cosmic_input and original_oncokb_input must exist")
-        if not os.path.exists(processed_transcript_input):
-            if not (os.path.exists(cosmic_genes_fasta) and os.path.exists(cosmic_transcripts_input)):
-                raise ValueError("If original_oncokb_input is provided, "
-                                 "one of processed_transcript_input or (cosmic_genes_fasta, cosmic_transcripts_input) "
-                                 "must exist")
-        elif os.path.exists(cosmic_transcript_output):
-            raise ValueError("Don't provide processed_transcript_input and cosmic_transcript_output")
-    elif os.path.exists(oncokb_output):
-        raise ValueError("Don't provide oncokb_output if oncokb_to_cosmic_input is provided")
+def preconditions_for_calculating_driver_mutations(cosmic_genes_fasta="",
+                                                   cosmic_transcripts_address="",
+                                                   oncokb_cgc_address="",
+                                                   cosmic_gsm_address="",
+                                                   cosmic_samples_address="",
+                                                   filtered_gsm_address="",
+                                                   transcript_information_address="",
+                                                   oncokb_to_cosmic_address="",
+                                                   filtered_samples_address="",
+                                                   output_address=""):
+    if not os.path.exists(transcript_information_address):
+        if not os.path.exists(cosmic_genes_fasta) or not os.path.exists(cosmic_transcripts_address):
+            raise ValueError("If transcript_information_address doesn't exist, both cosmic_genes_fasta and "
+                             "cosmic_transcripts_address must exist")
+    if not os.path.exists(oncokb_to_cosmic_address):
+        if not os.path.exists(oncokb_cgc_address):
+            raise ValueError("If oncokb_to_cosmic_address doesn't exist, oncokb_cgc_address must be exist")
 
-    # FILTERED GSM MUST BE CALCULATED
-    if not os.path.exists(filtered_gsm_file):
-        if not os.path.exists(original_gsm_file):
-            raise ValueError("One of filtered_gsm_file and original_gsm_file must exist")
-        if not os.path.exists(sample_input) and not os.path.exists(sample_output):
-            raise ValueError("If original_gsm_file is provided,"
-                             "one of sample_input and sample_output must exist")
-    elif os.path.exists(gsm_output):
-        raise ValueError("Don't provide filtered_gsm_file and gsm_output")
-
-    # OUTPUT MUST BE PROVIDED
-    if not os.path.exists(output_file):
-        raise ValueError("output_file must be provided")
+    if not os.path.exists(filtered_gsm_address):
+        if not os.path.exists(cosmic_gsm_address):
+            raise ValueError("One of filtered_gsm_file and cosmic_gsm_file must exist")
+        if not os.path.exists(cosmic_samples_address) and not os.path.exists(filtered_samples_address):
+            raise ValueError("If cosmic_gsm_file is provided,"
+                             "one of cosmic_samples_address and filtered_samples_address must exist")
+    if output_address == "":
+        raise ValueError("output_address must be provided")
 
 
-def predict_driver_mutations(original_gsm_file="",
-                             filtered_gsm_file="",
-                             sample_input="",
-                             original_oncokb_input="",
-                             processed_transcript_input="",
-                             cosmic_genes_fasta="",
-                             cosmic_transcripts_input="",
-                             oncokb_to_cosmic_input="",
-                             output_file="",
-                             gsm_output="",
-                             sample_output="",
-                             oncokb_output="",
-                             cosmic_transcript_output=""):
-    print("---predict_driver_mutations called with original_gsm_file={og}\n"
-          "filtered_gsm_file={fg}\n"
-          "sample_input={si}\n"
-          "original_oncokb_input={ooi}\n"
-          "processed_transcript_input={pt}\n"
-          "cosmic_genes_fasta={cgf}\n"
-          "cosmic_transcripts_input={cti}\n"
-          "oncokb_to_cosmic_input={oci}\n"
-          "output_file={of}\n"
-          "gsm_output={go}\n"
-          "sample_output={so}\n"
-          "oncokb_output={oo}\n"
-          "cosmic_transcript_output={cto}".format(og=original_gsm_file,
-                                                  fg=filtered_gsm_file,
-                                                  si=sample_input,
-                                                  ooi=original_oncokb_input,
-                                                  pt=processed_transcript_input,
-                                                  cgf=cosmic_genes_fasta,
-                                                  cti=cosmic_transcripts_input,
-                                                  oci=oncokb_to_cosmic_input,
-                                                  of=output_file,
-                                                  go=gsm_output,
-                                                  so=sample_output,
-                                                  oo=oncokb_output,
-                                                  cto=cosmic_transcript_output))
+def predict_driver_mutations(cosmic_genes_fasta="",
+                             cosmic_transcripts_address="",
+                             oncokb_cgc_address="",
+                             cosmic_gsm_address="",
+                             cosmic_sample_address="",
+                             filtered_gsm_address="",
+                             transcript_information_address="",
+                             oncokb_to_cosmic_address="",
+                             filtered_samples_address="",
+                             output_address=""):
 
-    preconditions_for_calculating_driver_mutations(original_gsm_file,
-                                                   filtered_gsm_file,
-                                                   sample_input,
-                                                   original_oncokb_input,
-                                                   processed_transcript_input,
-                                                   cosmic_genes_fasta,
-                                                   cosmic_transcripts_input,
-                                                   oncokb_to_cosmic_input,
-                                                   output_file,
-                                                   gsm_output,
-                                                   sample_output,
-                                                   oncokb_output,
-                                                   cosmic_transcript_output)
+    preconditions_for_calculating_driver_mutations(cosmic_genes_fasta,
+                                                   cosmic_transcripts_address,
+                                                   oncokb_cgc_address,
+                                                   cosmic_gsm_address,
+                                                   cosmic_sample_address,
+                                                   filtered_gsm_address,
+                                                   transcript_information_address,
+                                                   oncokb_to_cosmic_address,
+                                                   filtered_samples_address,
+                                                   output_address)
+    transcript_info_path = "tr_temp.tsv" if transcript_information_address == "" else transcript_information_address
+    cancer_gene_path = "cgc_temp.tsv" if oncokb_to_cosmic_address == "" else oncokb_to_cosmic_address
+    if not os.path.exists(transcript_information_address):
+        process_cosmic_transcripts(cosmic_genes_fasta=cosmic_genes_fasta,
+                                   cosmic_transcripts_input=cosmic_transcripts_address,
+                                   output_file=transcript_info_path)
 
-    temp_path = "temp_cgc.tsv"
-    if oncokb_to_cosmic_input != "":
-        cgc = read_from_file(input_file=oncokb_to_cosmic_input, df_description="oncokb driver genes in cosmic format")
+    if os.path.exists(oncokb_to_cosmic_address):
+        cancer_genes_info = read_from_file(input_file=oncokb_to_cosmic_address,
+                                           df_description="oncokb driver genes in cosmic format")
     else:
-        oncokb_to_cosmic_input = cosmic_transcript_output if cosmic_transcript_output != "" else temp_path
-        cgc = process_oncokb_file(original_oncokb_input=original_oncokb_input,
-                                  transcript_info_input=processed_transcript_input,
-                                  cosmic_genes_fasta_input=cosmic_genes_fasta,
-                                  cosmic_transcripts_input=cosmic_transcripts_input,
-                                  output_file=oncokb_to_cosmic_input)
+        cancer_genes_info = process_oncokb_file(original_oncokb_input=oncokb_cgc_address,
+                                                transcript_info_input=transcript_info_path,
+                                                output_file=cancer_gene_path)
 
-    if filtered_gsm_file != "":
-        gsm = read_from_file(input_file=filtered_gsm_file, df_description="mutation data for driver genes")
+    if os.path.exists(filtered_gsm_address):
+        gsm = read_from_file(input_file=filtered_gsm_address, df_description="mutation data for driver genes")
     else:
-        gsm = process_driver_gene_data_from_gsm(gsm_file=original_gsm_file,
-                                                sample_input=sample_input,
-                                                original_oncokb_input=original_oncokb_input,
-                                                processed_transcript_input=processed_transcript_input,
-                                                cosmic_genes_fasta=cosmic_genes_fasta,
-                                                cosmic_transcripts_input=cosmic_transcripts_input,
-                                                oncokb_to_cosmic_input=oncokb_to_cosmic_input,
-                                                gsm_output=gsm_output,
-                                                sample_output=sample_output,
-                                                oncokb_output=oncokb_output,
-                                                cosmic_transcript_output=cosmic_transcript_output)
-    mutation_df = calculate_probabilities(gsm, cgc)
-    if oncokb_to_cosmic_input == temp_path:
-        Path.unlink(Path(temp_path))
-    deal_with_data(mutation_df, output_file, "predicted driver mutations")
+        gsm = process_driver_gene_data_from_gsm(gsm_file=cosmic_gsm_address,
+                                                sample_input=cosmic_sample_address,
+                                                original_oncokb_input=oncokb_cgc_address,
+                                                processed_transcript_input=transcript_info_path,
+                                                oncokb_to_cosmic_input=oncokb_to_cosmic_address,
+                                                gsm_output=filtered_gsm_address,
+                                                sample_output=filtered_samples_address)
+    mutation_df = calculate_probabilities(gsm, cancer_genes_info)
+    if transcript_info_path != transcript_information_address:
+        Path.unlink(Path(transcript_info_path))
+    if cancer_gene_path != oncokb_to_cosmic_address:
+        Path.unlink(Path(cancer_gene_path))
+    deal_with_data(mutation_df, output_address, "predicted driver mutations")
 
 
-predict_driver_mutations(original_gsm_file="../originalDatabases/original_GSM.tsv",
-                         sample_input="../originalDatabases/samples.tsv",
-                         original_oncokb_input="../originalDatabases/oncokb_cancer_gene_census.tsv",
+predict_driver_mutations(cosmic_gsm_address="../originalDatabases/original_GSM.tsv",
+                         cosmic_sample_address="../originalDatabases/samples.tsv",
+                         oncokb_cgc_address="../originalDatabases/oncokb_cancer_gene_census.tsv",
                          cosmic_genes_fasta="../originalDatabases/cosmic_genes.fasta",
-                         cosmic_transcripts_input="../originalDatabases/transcripts.tsv",
-                         output_file="../7_11/driver_mutations.tsv",
-                         gsm_output="../7_11/driver_GSM.tsv",
-                         sample_output="../7_11/filtered_samples.tsv",
-                         oncokb_output="../7_11/onco_to_cosmic.tsv",
-                         cosmic_transcript_output="../7_11/transcript_info.tsv")
+                         cosmic_transcripts_address="../originalDatabases/transcripts.tsv",
+                         output_address="../7_11/driver_mutations.tsv",
+                         filtered_gsm_address="../7_11/driver_GSM.tsv",
+                         filtered_samples_address="../7_11/filtered_samples.tsv",
+                         oncokb_to_cosmic_address="../7_11/onco_to_cosmic.tsv",
+                         transcript_information_address="../7_11/transcript_info.tsv")

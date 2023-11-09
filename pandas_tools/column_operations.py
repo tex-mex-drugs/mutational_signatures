@@ -35,6 +35,6 @@ def remove_excessive_count(df: pd.DataFrame,
         df = df.loc[(df[row_count] >= lower_threshold)].copy(deep=True)
     if upper_threshold is not None:
         df = df.loc[(df[row_count] <= upper_threshold)].copy(deep=True)
-    df.drop(row_count, inplace=True)
+    df.drop(row_count, inplace=True, axis=1)
     print(df.shape)
     return df

@@ -1,8 +1,8 @@
 import pandas as pd
 
-from pandas_tools.data import read_from_file, deal_with_data
 from data_frame_columns.OncoKb import Drivers
-from process_data.cosmic_transcripts import TranscriptInfo, process_cosmic_transcripts
+from pandas_tools.data import read_from_file, deal_with_data
+from process_data.cosmic_transcripts import TranscriptInfo
 
 
 def convert_oncokb_to_cosmic_format(oncokb_df: pd.DataFrame,
@@ -36,16 +36,9 @@ def convert_oncokb_to_cosmic_format(oncokb_df: pd.DataFrame,
 
 def process_oncokb_file(original_oncokb_input: str,
                         transcript_info_input="",
-                        cosmic_genes_fasta_input="",
-                        cosmic_transcripts_input="",
-                        output_file="",
-                        cosmic_transcript_output=""):
-    if transcript_info_input != "":
-        transcript_info = read_from_file(input_file=transcript_info_input, df_description="transcript information")
-    else:
-        transcript_info = process_cosmic_transcripts(cosmic_genes_fasta=cosmic_genes_fasta_input,
-                                                     cosmic_transcripts_input=cosmic_transcripts_input,
-                                                     output_file=cosmic_transcript_output)
+                        output_file=""):
+    transcript_info = read_from_file(input_file=transcript_info_input, df_description="transcript information")
+
     oncokb_df = read_from_file(input_file=original_oncokb_input, df_description="oncokb cancer gene census")
     return convert_oncokb_to_cosmic_format(oncokb_df=oncokb_df,
                                            transcript_info=transcript_info,

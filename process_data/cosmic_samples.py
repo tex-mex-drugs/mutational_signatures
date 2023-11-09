@@ -45,7 +45,7 @@ class CosmicSamples:
                               df_description="restricted cosmic samples")
 
     def retrieve_sample_ids(self):
-        if self.output_file != "" and os.path.isfile(self.output_file):
+        if os.path.isfile(self.output_file):
             samples = read_from_file(input_file=self.output_file, df_description="restricted cosmic samples")
             return self.__retrieve_ids(samples)
 
