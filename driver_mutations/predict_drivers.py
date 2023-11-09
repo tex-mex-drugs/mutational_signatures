@@ -35,7 +35,7 @@ def residue_probability(row, cancer_gene_census):
     # possible_residue_mutations = no of distinct nucleotide substitutions that cause the same amino acid substitution
     rm = row[ExtraGsmColumns.POSSIBLE_SUBSTITUTIONS]
     gene_id_df = cancer_gene_census.loc[cancer_gene_census[TranscriptInfo.COSMIC_GENE_ID] == row[GSM.COSMIC_GENE_ID]]
-    if gene_id_df.shape[0] == 0:
+    if gene_id_df.empty:
         raise ValueError("Something is wrong: {r}".format(r=row))
     gene_length = gene_id_df.iloc[0][TranscriptInfo.GENE_LENGTH]
 
@@ -167,7 +167,7 @@ def preconditions_for_calculating_driver_mutations(original_gsm_file="",
     if not os.path.exists(filtered_gsm_file):
         if not os.path.exists(original_gsm_file):
             raise ValueError("One of filtered_gsm_file and original_gsm_file must exist")
-        if not os.path.exists(sample_input) or not os.path.exists(sample_output):
+        if not os.path.exists(sample_input) and not os.path.exists(sample_output):
             raise ValueError("If original_gsm_file is provided,"
                              "one of sample_input and sample_output must exist")
     elif os.path.exists(gsm_output):
@@ -260,3 +260,15 @@ def predict_driver_mutations(original_gsm_file="",
     if oncokb_to_cosmic_input == temp_path:
         Path.unlink(Path(temp_path))
     deal_with_data(mutation_df, output_file, "predicted driver mutations")
+
+
+predict_driver_mutations(original_gsm_file="../originalDatabases/original_GSM.tsv",
+                         sample_input="../originalDatabases/samples.tsv",
+                         original_oncokb_input="../originalDatabases/oncokb_cancer_gene_census.tsv",
+                         cosmic_genes_fasta="../originalDatabases/cosmic_genes.fasta",
+                         cosmic_transcripts_input="../originalDatabases/transcripts.tsv",
+                         output_file="../7_11/driver_mutations.tsv",
+                         gsm_output="../7_11/driver_GSM.tsv",
+                         sample_output="../7_11/filtered_samples.tsv",
+                         oncokb_output="../7_11/onco_to_cosmic.tsv",
+                         cosmic_transcript_output="../7_11/transcript_info.tsv")

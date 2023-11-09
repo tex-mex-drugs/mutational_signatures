@@ -27,7 +27,7 @@ class FastaMetadata:
         length_list = elements[2].replace("(", "-").replace(":", "-").split("-")
         self.gene_length = int(length_list[2]) - int(length_list[1])
         metadata = self.transcripts.loc[self.transcripts["STRIPPED_TRANSCRIPTS"] == self.transcript]
-        if metadata.shape[0] == 0:
+        if metadata.empty:
             raise ValueError("Cannot find metadata for ensembl transcript {enst} in cosmic transcript data"
                              .format(enst=self.transcript))
         self.cosmic_gene_id = metadata.iloc[0][CosmicTranscripts.COSMIC_GENE_ID]
@@ -67,16 +67,16 @@ class TranscriptInfo:
         return df
 
 
-def get_gene_lengths(cosmic_genes_fasta, transcripts: pd.DataFrame):
-    print("---Stripping transcripts of version information---")
-    transcripts["STRIPPED_TRANSCRIPTS"] = (
-        transcripts.apply(lambda x: x[CosmicTranscripts.TRANSCRIPT_ACCESSION].split(".")[0], axis=1))
-    print(transcripts.shape)
+def get_gene_lengths(cosmic_genes_fasta, cosmic_transcripts: pd.DataFrame):
+    print("---Stripping cosmic transcripts of version information---")
+    cosmic_transcripts["STRIPPED_TRANSCRIPTS"] = (
+        cosmic_transcripts.apply(lambda x: x[CosmicTranscripts.TRANSCRIPT_ACCESSION].split(".")[0], axis=1))
+    print(cosmic_transcripts.shape)
 
     print("---Opening cosmic_genes fasta file {address}---".format(address=cosmic_genes_fasta))
     with open(cosmic_genes_fasta, "r") as f:
         transcript_info = TranscriptInfo()
-        metadata = FastaMetadata(transcripts=transcripts)
+        metadata = FastaMetadata(transcripts=cosmic_transcripts)
         i = 0
         for line in f:
             # looking for metadata lines e.g. >OR4F5 ENST00000335137.4 1:65419-71585(+)
@@ -94,5 +94,5 @@ def get_gene_lengths(cosmic_genes_fasta, transcripts: pd.DataFrame):
 def process_cosmic_transcripts(cosmic_genes_fasta, cosmic_transcripts_input: str, output_file=""):
     transcripts = read_from_file(input_file=cosmic_transcripts_input,
                                  df_description="cosmic transcripts file")
-    df = get_gene_lengths(cosmic_genes_fasta=cosmic_genes_fasta, transcripts=transcripts)
+    df = get_gene_lengths(cosmic_genes_fasta=cosmic_genes_fasta, cosmic_transcripts=transcripts)
     return deal_with_data(df=df, output_file=output_file, df_description="transcript information")

@@ -5,6 +5,7 @@ from data_frame_columns.Cosmic import GSM
 from pandas_tools.batch_read import batch_read_and_filter
 from pandas_tools.column_operations import remove_excessive_count
 from pandas_tools.data import read_from_file, deal_with_data
+from process_data.cosmic_transcripts import TranscriptInfo
 from process_data.oncokb_genes import process_oncokb_file
 
 
@@ -17,11 +18,11 @@ def gsm_driver_filter(cancer_genes, sample_ids, chunk):
 # prioritise canonical transcript, then prioritise in exon mutations
 def prioritise_transcripts(row: pd.Series, transcript_information: pd.DataFrame):
     aa_sub = row[GSM.MUTATION_AA]
-    transcript = row[GSM.TRANSCRIPT_ACCESSION]
-    transcript_info = transcript_information.loc[transcript_information["ENSEMBL_TRANSCRIPT"] == transcript]
-    if transcript_info.shape[0] == 0:
+    transcript = row[GSM.TRANSCRIPT_ACCESSION].split(".")[0]
+    transcript_info = transcript_information.loc[transcript_information[TranscriptInfo.ENSEMBL_TRANSCRIPT] == transcript]
+    if transcript_info.empty:
         raise ValueError("No transcript information found for {transcript}".format(transcript=transcript))
-    if transcript_info.iloc[0]["IS_CANONICAL"] == "y":
+    if transcript_info.iloc[0][TranscriptInfo.IS_CANONICAL] == "y":
         return 0
     if aa_sub != "p.?":
         return 1
