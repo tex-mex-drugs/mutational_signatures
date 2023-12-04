@@ -5,10 +5,10 @@ description = ""
 authors = ["AdrenalinJunkie <woollc007@gmail.com>"]
 readme = "README.md"
 packages = [
-    {include = "data_frame_columns"},
-    {include = "driver_mutations"},
-    {include = "pandas_tools"},
-    {include = "process_data"}
+    { include = "data_frame_columns" },
+    { include = "driver_mutations" },
+    { include = "pandas_tools" },
+    { include = "process_data" }
 ]
 
 [tool.poetry.dependencies]

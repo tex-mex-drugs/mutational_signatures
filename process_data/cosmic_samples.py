@@ -7,8 +7,7 @@ from pandas_tools.data import read_from_file, deal_with_data
 
 class CosmicSamples:
     def __init__(self, input_file="", output_file=""):
-        if input_file == "" and output_file == "":
-            raise ValueError("Cannot create CosmicSample with no file information")
+        CosmicSamples.verify(input_file, output_file)
         self.input_file = input_file
         self.output_file = output_file
 
@@ -17,6 +16,11 @@ class CosmicSamples:
     TUMOUR_SOURCE = "TUMOUR_SOURCE"
     INDIVIDUAL_ID = "INDIVIDUAL_ID"
     COSMIC_SAMPLE_ID = "COSMIC_SAMPLE_ID"
+
+    @staticmethod
+    def verify(input_file="", output_file=""):
+        if input_file == "" and output_file == "":
+            raise ValueError("Cannot create CosmicSample with no file information")
 
     def __filter_sample_dataframe(self, samples: pd.DataFrame):
         print("---Restricting samples to whole genome/exome screens and primary tumour sources---")
@@ -30,7 +34,7 @@ class CosmicSamples:
         print(samples.shape)
 
         return samples
-    
+
     def __retrieve_ids(self, filtered_samples: pd.DataFrame):
         print("---Retrieving list of valid sample IDs---")
         ids = filtered_samples[self.COSMIC_SAMPLE_ID].drop_duplicates().tolist()

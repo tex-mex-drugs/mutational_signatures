@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 
 
@@ -18,3 +20,15 @@ def deal_with_data(df: pd.DataFrame, output_file="", df_description="dataframe")
         return df
     else:
         return df
+
+
+def verify_path_exists(path, path_description):
+    if path == "":
+        raise ValueError("{pd} must be provided".format(pd=path_description))
+    if not os.path.exists(path):
+        raise ValueError("{pd}={p} must exist".format(pd=path_description, p=path))
+
+
+def join(df_1: pd.DataFrame, df_2: pd.DataFrame, shared_column: str):
+    df = df_1.merge(df_2, on=shared_column, how="left")
+    return df
