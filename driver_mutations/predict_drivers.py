@@ -4,7 +4,7 @@ from scipy.stats import binom
 from data_frame_columns.Cosmic import GSM
 from data_frame_columns.Extra import ExtraGsmColumns
 from pandas_tools.column_operations import *
-from pandas_tools.data import join, deal_with_data
+from pandas_tools.data import join, deal_with_data, read_from_file
 from process_data.cancer_gene_info import CancerGeneInfo
 from process_data.cosmic_GSM import gsm_verify, read_gsm_from_file, get_mutation_ids_from_gsm, \
     get_recommended_transcripts_from_gsm
@@ -123,13 +123,16 @@ def predict_driver_mutations(cosmic_samples_address: str,
                              cosmic_gsm_address: str,
                              oncokb_cancer_genes_address: str,
                              biomart_genes_address: str,
-                             output_address: str):
+                             output_address: str,
+                             gsm_output="",
+                             filtered_gsm_address=""):
     CosmicSamples.verify(input_file=cosmic_samples_address)
     Genes.verify(cosmic_genes_address=cosmic_genes_address, biomart_genes_address=biomart_genes_address)
     CancerGeneInfo.verify(oncokb_cancer_genes_address=oncokb_cancer_genes_address,
                           cosmic_gene_address=cosmic_genes_address,
                           cosmic_transcripts_address=cosmic_transcripts_address)
-    gsm_verify(cosmic_gsm_address=cosmic_gsm_address)
+    if filtered_gsm_address == "":
+        gsm_verify(cosmic_gsm_address=cosmic_gsm_address)
 
     samples = CosmicSamples(input_file=cosmic_samples_address)
     gene_lengths = Genes(cosmic_genes_address=cosmic_genes_address,
@@ -137,11 +140,17 @@ def predict_driver_mutations(cosmic_samples_address: str,
     cancer_gene_info = CancerGeneInfo(oncokb_cancer_genes_address=oncokb_cancer_genes_address,
                                       cosmic_gene_address=cosmic_genes_address,
                                       cosmic_transcripts_address=cosmic_transcripts_address)
-    
-    gsm = read_gsm_from_file(cosmic_gsm_address=cosmic_gsm_address,
-                             samples=samples,
-                             cancer_gene_info=cancer_gene_info)
-    
+
+    if filtered_gsm_address == "":
+        gsm = read_gsm_from_file(cosmic_gsm_address=cosmic_gsm_address,
+                                 samples=samples,
+                                 cancer_gene_info=cancer_gene_info)
+        if gsm_output != "":
+            deal_with_data(gsm, gsm_output, "filtered GSM dataframe")
+    else:
+        gsm = read_from_file(input_file=filtered_gsm_address,
+                             df_description="Prefiltered GSM dataframe")
+
     mutation_ids = get_mutation_ids_from_gsm(gsm)
     recommended_transcripts = get_recommended_transcripts_from_gsm(gsm, cancer_gene_info)
     unique_aa_subs = unique_aa_subs_per_gene_phenotype_pair(mutation_ids)
