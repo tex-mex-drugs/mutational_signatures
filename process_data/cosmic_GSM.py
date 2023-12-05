@@ -33,28 +33,35 @@ def gsm_verify(cosmic_gsm_address=""):
 
 
 def get_mutation_ids_from_gsm(gsm: pd.DataFrame):
+    print("--Creating dataframe of unique mutation, sample pairs--")
     mutation_ids = gsm[[GSM.GENE_SYMBOL, GSM.COSMIC_GENE_ID, GSM.COSMIC_SAMPLE_ID, GSM.COSMIC_PHENOTYPE_ID,
-                        GSM.GENOMIC_MUTATION_ID, GSM.HGVSG]].drop_duplicates(inplace=True).copy(deep=True)
-    return mutation_ids
+                        GSM.GENOMIC_MUTATION_ID, GSM.HGVSG]].drop_duplicates(inplace=True)
+    print(mutation_ids.shape)
+    return mutation_ids.copy(deep=True)
 
 
 def get_recommended_transcripts_from_gsm(gsm: pd.DataFrame,
                                          cancer_gene_info: CancerGeneInfo):
+    print("--Finding recommended transcript to use for each unique mutation--")
     transcript_max = "TRANSCRIPT_MAX"
     transcript_count = "TRANSCRIPT_COUNT"
     transcript_score = "SCORE"
 
+    print("--Restricting dataframe to useful columns--")
     df = gsm[[GSM.COSMIC_GENE_ID,
               GSM.TRANSCRIPT_ACCESSION,
               GSM.GENOMIC_MUTATION_ID,
               GSM.MUTATION_AA]].copy(deep=True)
     df.drop_duplicates(inplace=True)
-    # FIXME need to test this
-    #  because it might be that these are versioned transcripts so need to check that the versions line up
+    print(df.shape)
+
+    print("--Adding is_canonical column to dataframe--")
     df = join(df,
               cancer_gene_info.cosmic_cancer_transcripts[[CosmicTranscripts.TRANSCRIPT_ACCESSION,
                                                           CosmicTranscripts.IS_CANONICAL]],
               GSM.TRANSCRIPT_ACCESSION)
+    print(df.shape)
+
     count_rows(df,
                grouped_columns=[GSM.COSMIC_GENE_ID, GSM.TRANSCRIPT_ACCESSION],
                counted_column=GSM.GENOMIC_MUTATION_ID,
@@ -65,10 +72,13 @@ def get_recommended_transcripts_from_gsm(gsm: pd.DataFrame,
                counted_column=GSM.TRANSCRIPT_ACCESSION,
                new_column=transcript_max,
                count_type="max")
+    print("--Scoring transcripts--")
     create_column_from_apply(df, lambda x: score(x, transcript_max, transcript_count), transcript_score)
     # for mutationId, sort and pick the lowest score transcript per gene
     df.sort_values(by=transcript_score, inplace=True)
+    print("--Dropping unnecessary transcripts--")
     df.drop_duplicates(subset=[GSM.GENOMIC_MUTATION_ID], inplace=True)
+    print(df.shape)
     return df[[GSM.COSMIC_GENE_ID,
                GSM.TRANSCRIPT_ACCESSION,
                GSM.GENOMIC_MUTATION_ID,

@@ -2,6 +2,8 @@ import pandas as pd
 
 from data_frame_columns.Cosmic import CosmicGenes
 from data_frame_columns.OncoKb import Drivers
+from pandas_tools.column_operations import remove_version_information
+
 from pandas_tools.data import read_from_file, verify_path_exists, join
 
 
@@ -33,7 +35,8 @@ class CancerGeneInfo:
                                                 cosmic_genes: pd.DataFrame):
         print("---Retrieving gene lists from each database---")
         oncokb_gene_ids = oncokb_df[Drivers.ENSEMBL_GENE_ID].drop_duplicates().tolist()
-        cosmic_gene_ids = cosmic_genes[CosmicGenes.GENE_ACCESSION].drop_duplicates().tolist()
+        df = remove_version_information(cosmic_genes, CosmicGenes.GENE_ACCESSION, Drivers.ENSEMBL_GENE_ID)
+        cosmic_gene_ids = df[Drivers.ENSEMBL_GENE_ID].drop_duplicates().tolist()
 
         known_genes = []
         unknown_genes = []
@@ -41,7 +44,7 @@ class CancerGeneInfo:
         for gene_id in oncokb_gene_ids:
             i += 1
             if i % 100 == 0:
-                print("---Processing {index}th transcript---".format(index=i))
+                print("---Processing {index}th gene---".format(index=i))
             if gene_id in cosmic_gene_ids:
                 known_genes.append(gene_id)
             else:
@@ -51,14 +54,11 @@ class CancerGeneInfo:
             print("WARN ---{i} genes in the oncokb list had no clear match in the cosmic list. "
                   "Please check that code is running correctly---".format(i=len(unknown_genes)))
         print("---Creating final database---")
-        df = cosmic_genes.loc[cosmic_genes[
-            CosmicGenes.GENE_ACCESSION].isin(known_genes)][[CosmicGenes.COSMIC_GENE_ID]].to_list()
-        print(df.shape)
-        return df
+        cancer_genes = df.loc[df[
+            Drivers.ENSEMBL_GENE_ID].isin(known_genes)][CosmicGenes.COSMIC_GENE_ID].tolist()
+        print(len(cancer_genes))
+        return cancer_genes
 
-# TODO does this actually do what you think it does?
     def __cosmic_driver_transcripts(self, cosmic_transcripts: pd.DataFrame):
-        df = join(cosmic_transcripts,
-                  self.cosmic_cancer_genes[[CosmicGenes.COSMIC_GENE_ID]],
-                  CosmicGenes.COSMIC_GENE_ID)
-        return df
+        df = cosmic_transcripts.loc[cosmic_transcripts[CosmicGenes.COSMIC_GENE_ID].isin(self.cosmic_cancer_genes)]
+        return df.copy(deep=True)

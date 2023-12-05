@@ -17,6 +17,11 @@ def create_column_from_apply(df: pd.DataFrame,
     return df
 
 
+def remove_version_information(df: pd.DataFrame, old_column: str, new_column: str):
+    df[new_column] = df.apply(lambda x: x[old_column].split(".")[0], axis=1)
+    return df
+
+
 def remove_excessive_count(df: pd.DataFrame,
                            description: str,
                            grouped_column: str,
