@@ -25,6 +25,7 @@ def read_gsm_from_file(cosmic_gsm_address: str,
                                  lower_threshold=0,
                                  upper_threshold=1000)
     print("---Finished processing GSM file---")
+    print(gsm.shape)
     return gsm
 
 
@@ -34,9 +35,13 @@ def gsm_verify(cosmic_gsm_address=""):
 
 def get_mutation_ids_from_gsm(gsm: pd.DataFrame):
     print("--Creating dataframe of unique mutation, sample pairs--")
-    mutation_ids = gsm[[GSM.GENE_SYMBOL, GSM.COSMIC_GENE_ID, GSM.COSMIC_SAMPLE_ID, GSM.COSMIC_PHENOTYPE_ID,
-                        GSM.GENOMIC_MUTATION_ID, GSM.HGVSG]].drop_duplicates(inplace=True)
-    print(mutation_ids.shape)
+    print("--Filtered gsm is shape {x}--".format(x=gsm.shape))
+    df = gsm.copy(deep=True)
+    mutation_ids = df[[GSM.GENE_SYMBOL, GSM.COSMIC_GENE_ID, GSM.COSMIC_SAMPLE_ID, GSM.COSMIC_PHENOTYPE_ID,
+                       GSM.GENOMIC_MUTATION_ID, GSM.HGVSG]]
+    print("--Restricting to necessary columns, shape {x}--".format(x=mutation_ids.shape))
+    mutation_ids.drop_duplicates(inplace=True)
+    print("--Dropping duplicate rows, shape {x}--".format(x=mutation_ids.shape))
     return mutation_ids.copy(deep=True)
 
 
@@ -79,8 +84,7 @@ def get_recommended_transcripts_from_gsm(gsm: pd.DataFrame,
     print("--Dropping unnecessary transcripts--")
     df.drop_duplicates(subset=[GSM.GENOMIC_MUTATION_ID], inplace=True)
     print(df.shape)
-    return df[[GSM.COSMIC_GENE_ID,
-               GSM.TRANSCRIPT_ACCESSION,
+    return df[[GSM.TRANSCRIPT_ACCESSION,
                GSM.GENOMIC_MUTATION_ID,
                GSM.MUTATION_AA]].copy(deep=True)
 

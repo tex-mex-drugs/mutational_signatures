@@ -3,8 +3,7 @@ import pandas as pd
 from data_frame_columns.Cosmic import CosmicGenes
 from data_frame_columns.OncoKb import Drivers
 from pandas_tools.column_operations import remove_version_information
-
-from pandas_tools.data import read_from_file, verify_path_exists, join
+from pandas_tools.data import read_from_file, verify_path_exists
 
 
 class CancerGeneInfo:
