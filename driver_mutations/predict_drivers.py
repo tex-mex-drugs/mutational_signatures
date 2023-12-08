@@ -125,16 +125,24 @@ def get_benjamini_hochberg_number(row):
 
 def benjamini_hochberg_correction(unique_aa_subs: pd.DataFrame):
     print("---Calculating the Benjamini Hochberg correction---")
-    unique_aa_subs[ExtraColumns.BH_GROUPS] = (
-        unique_aa_subs.groupby([GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID])[ExtraColumns.PROBABILITY]
-        .apply(lambda group: sorted(stats.false_discovery_control(group))))
-    unique_aa_subs[ExtraColumns.PROB_GROUPS] = (
-        unique_aa_subs.groupby([GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID])[ExtraColumns.PROBABILITY]
-        .apply(lambda x: sorted(x.to_list())))
-    unique_aa_subs[ExtraColumns.BENJAMINI_HOCHBERG] = unique_aa_subs.apply(lambda x: get_benjamini_hochberg_number(x))
-    unique_aa_subs.drop([ExtraColumns.BH_GROUPS, ExtraColumns.PROB_GROUPS], axis=1)
-    print(unique_aa_subs.shape)
-    return unique_aa_subs
+    grouped_object = unique_aa_subs.groupby([GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID])[ExtraColumns.PROBABILITY]
+    prob_df = grouped_object.apply(lambda x: sorted(x.to_list())).to_frame(name=ExtraColumns.PROB_GROUPS)
+    bh_df = (grouped_object.apply(lambda group: sorted(stats.false_discovery_control(group)))
+             .to_frame(name=ExtraColumns.BH_GROUPS))
+    df = pd.merge(unique_aa_subs,
+                  prob_df,
+                  how='left',
+                  left_on=[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID],
+                  right_on=[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID])
+    df = pd.merge(df,
+                  bh_df,
+                  how='left',
+                  left_on=[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID],
+                  right_on=[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID])
+    df[ExtraColumns.BENJAMINI_HOCHBERG] = df.apply(lambda x: get_benjamini_hochberg_number(x), axis=1)
+    df.drop([ExtraColumns.BH_GROUPS, ExtraColumns.PROB_GROUPS], axis=1)
+    print(df.shape)
+    return df
 
 
 def predict_driver_mutations(cosmic_samples_address: str,
