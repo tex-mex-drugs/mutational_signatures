@@ -29,6 +29,9 @@ def verify_path_exists(path, path_description):
         raise ValueError("{pd}={p} must exist".format(pd=path_description, p=path))
 
 
-def join(df_1: pd.DataFrame, df_2: pd.DataFrame, shared_column: str):
-    df = df_1.merge(df_2, on=shared_column, how="left")
+def join(df_1: pd.DataFrame, df_2: pd.DataFrame, left_columns: list[str], right_columns=None):
+    df = df_1.merge(df_2,
+                    left_on=left_columns,
+                    right_on=left_columns if right_columns is None else right_columns,
+                    how="left")
     return df

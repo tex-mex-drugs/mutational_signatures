@@ -37,5 +37,5 @@ class Genes:
         biomart_gene_length[ensembl_id] = biomart_gene_length.loc[:, Gene.GENE_STABLE_ID]
         gene_info = join(df,
                          biomart_gene_length[[ensembl_id, Genes.GENE_LENGTH]],
-                         ensembl_id)
+                         [ensembl_id])
         return gene_info[[Genes.COSMIC_GENE_ID, Genes.GENE_LENGTH]]

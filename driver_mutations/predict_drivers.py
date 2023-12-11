@@ -1,13 +1,9 @@
 from scipy import stats
 from scipy.stats import binom
 
-from data_frame_columns.Cosmic import GSM
 from data_frame_columns.Extra import ExtraColumns
-from pandas_tools.column_operations import *
-from pandas_tools.data import join, deal_with_data, read_from_file
-from process_data.cancer_gene_info import CancerGeneInfo
-from process_data.cosmic_GSM import gsm_verify, read_gsm_from_file, get_mutation_ids_from_gsm, \
-    get_recommended_transcripts_from_gsm
+from pandas_tools.data import *
+from process_data.cosmic_GSM import *
 from process_data.cosmic_samples import CosmicSamples
 from process_data.gene_lengths import Genes
 
@@ -49,12 +45,19 @@ def residue_probability(row, gene_lengths: Genes):
 
 
 def unique_aa_subs_per_gene_phenotype_pair(mutation_id_info: pd.DataFrame,
+                                           phenotypes: pd.DataFrame,
                                            sample_threshold=10,
                                            percentage_threshold=0.03):
+    print("---Adding phenotype information to the mutation id dataframe---")
+    mutation_id_info = join(mutation_id_info, phenotypes, [GSM.COSMIC_PHENOTYPE_ID])
+    mutation_id_info.drop(GSM.COSMIC_PHENOTYPE_ID)
+
     print("---Calculating total number of point substitutions per phenotype, gene pair---")
     mutation_df = mutation_id_info.copy(deep=True)
     count_rows(df=mutation_df,
-               grouped_columns=[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID],
+               grouped_columns=[CosmicPhenotypes.PRIMARY_SITE,
+                                CosmicPhenotypes.PRIMARY_HISTOLOGY,
+                                GSM.COSMIC_GENE_ID],
                counted_column=GSM.COSMIC_GENE_ID,
                new_column=ExtraColumns.TOTAL_MUTATIONS,
                count_type="count")
@@ -62,14 +65,18 @@ def unique_aa_subs_per_gene_phenotype_pair(mutation_id_info: pd.DataFrame,
 
     print("---Calculating the number of distinct point substitutions per phenotype, gene pair---")
     count_rows(df=mutation_df,
-               grouped_columns=[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID, GSM.GENOMIC_MUTATION_ID],
+               grouped_columns=[CosmicPhenotypes.PRIMARY_SITE,
+                                CosmicPhenotypes.PRIMARY_HISTOLOGY,
+                                GSM.COSMIC_GENE_ID,
+                                GSM.GENOMIC_MUTATION_ID],
                counted_column=GSM.COSMIC_SAMPLE_ID,
                new_column=ExtraColumns.RESIDUE_COUNT)
     print(mutation_df.shape)
 
     print("---Discarding mutations that aren't present in enough samples---")
     count_rows(df=mutation_df,
-               grouped_columns=[GSM.COSMIC_PHENOTYPE_ID],
+               grouped_columns=[CosmicPhenotypes.PRIMARY_SITE,
+                                CosmicPhenotypes.PRIMARY_HISTOLOGY],
                counted_column=GSM.COSMIC_SAMPLE_ID,
                new_column=ExtraColumns.SAMPLE_COUNT)
     create_column_from_apply(df=mutation_df,
@@ -89,8 +96,13 @@ def unique_aa_subs_per_gene_phenotype_pair(mutation_id_info: pd.DataFrame,
                                          count_type=max)
 
     print("---Creating database of unique amino acid substitutions per phenotype, gene pair---")
-    mutation_df = mutation_df[[GSM.COSMIC_PHENOTYPE_ID, GSM.GENE_SYMBOL, GSM.COSMIC_GENE_ID, GSM.GENOMIC_MUTATION_ID,
-                               ExtraColumns.RESIDUE_COUNT, ExtraColumns.TOTAL_MUTATIONS]].copy(deep=True)
+    mutation_df = mutation_df[[CosmicPhenotypes.PRIMARY_SITE,
+                               CosmicPhenotypes.PRIMARY_HISTOLOGY,
+                               GSM.GENE_SYMBOL,
+                               GSM.COSMIC_GENE_ID,
+                               GSM.GENOMIC_MUTATION_ID,
+                               ExtraColumns.RESIDUE_COUNT,
+                               ExtraColumns.TOTAL_MUTATIONS]].copy(deep=True)
     mutation_df.drop_duplicates(inplace=True)
     print(mutation_df.shape)
     return mutation_df
@@ -103,13 +115,17 @@ def finding_rare_mutations(unique_aa_subs: pd.DataFrame, gene_lengths: Genes):
                              ExtraColumns.PROBABILITY)
     print(unique_aa_subs.shape)
 
-    benjamini_hochberg_correction(unique_aa_subs)
+    unique_aa_subs = benjamini_hochberg_correction(unique_aa_subs)
 
     print("---Removing mutations that aren't statistically significant---")
     unique_aa_subs = unique_aa_subs.loc[unique_aa_subs[ExtraColumns.BENJAMINI_HOCHBERG] <= 0.05].copy(deep=True)
     print(unique_aa_subs.shape)
 
-    unique_aa_subs.sort_values(by=[GSM.GENE_SYMBOL, GSM.COSMIC_PHENOTYPE_ID, GSM.GENOMIC_MUTATION_ID], inplace=True)
+    unique_aa_subs.sort_values(by=[GSM.GENE_SYMBOL,
+                                   CosmicPhenotypes.PRIMARY_SITE,
+                                   CosmicPhenotypes.PRIMARY_HISTOLOGY,
+                                   GSM.GENOMIC_MUTATION_ID],
+                               inplace=True)
     print("---Finished processing mutations---")
     return unique_aa_subs
 
@@ -125,20 +141,22 @@ def get_benjamini_hochberg_number(row):
 
 def benjamini_hochberg_correction(unique_aa_subs: pd.DataFrame):
     print("---Calculating the Benjamini Hochberg correction---")
-    grouped_object = unique_aa_subs.groupby([GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID])[ExtraColumns.PROBABILITY]
+    grouped_object = unique_aa_subs.groupby([CosmicPhenotypes.PRIMARY_SITE,
+                                             CosmicPhenotypes.PRIMARY_HISTOLOGY,
+                                             GSM.COSMIC_GENE_ID])[ExtraColumns.PROBABILITY]
     prob_df = grouped_object.apply(lambda x: sorted(x.to_list())).to_frame(name=ExtraColumns.PROB_GROUPS)
     bh_df = (grouped_object.apply(lambda group: sorted(stats.false_discovery_control(group)))
              .to_frame(name=ExtraColumns.BH_GROUPS))
-    df = pd.merge(unique_aa_subs,
-                  prob_df,
-                  how='left',
-                  left_on=[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID],
-                  right_on=[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID])
-    df = pd.merge(df,
-                  bh_df,
-                  how='left',
-                  left_on=[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID],
-                  right_on=[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_GENE_ID])
+    df = join(unique_aa_subs,
+              prob_df,
+              [CosmicPhenotypes.PRIMARY_SITE,
+               CosmicPhenotypes.PRIMARY_HISTOLOGY,
+               GSM.COSMIC_GENE_ID])
+    df = join(df,
+              bh_df,
+              [CosmicPhenotypes.PRIMARY_SITE,
+               CosmicPhenotypes.PRIMARY_HISTOLOGY,
+               GSM.COSMIC_GENE_ID])
     df[ExtraColumns.BENJAMINI_HOCHBERG] = df.apply(lambda x: get_benjamini_hochberg_number(x), axis=1)
     df.drop([ExtraColumns.BH_GROUPS, ExtraColumns.PROB_GROUPS], axis=1)
     print(df.shape)
@@ -149,6 +167,7 @@ def predict_driver_mutations(cosmic_samples_address: str,
                              cosmic_genes_address: str,
                              cosmic_transcripts_address: str,
                              cosmic_gsm_address: str,
+                             cosmic_phenotypes_address: str,
                              oncokb_cancer_genes_address: str,
                              biomart_genes_address: str,
                              output_address: str,
@@ -163,6 +182,7 @@ def predict_driver_mutations(cosmic_samples_address: str,
                           cosmic_transcripts_address=cosmic_transcripts_address)
     if filtered_gsm_address == "":
         gsm_verify(cosmic_gsm_address=cosmic_gsm_address)
+    verify_path_exists(cosmic_phenotypes_address, "COSMIC classification dataframe")
 
     samples = CosmicSamples(input_file=cosmic_samples_address)
     gene_lengths = Genes(cosmic_genes_address=cosmic_genes_address,
@@ -170,7 +190,10 @@ def predict_driver_mutations(cosmic_samples_address: str,
     cancer_gene_info = CancerGeneInfo(oncokb_cancer_genes_address=oncokb_cancer_genes_address,
                                       cosmic_gene_address=cosmic_genes_address,
                                       cosmic_transcripts_address=cosmic_transcripts_address)
-
+    phenotypes = read_from_file(cosmic_phenotypes_address,
+                                "phenotype classification")[[CosmicPhenotypes.COSMIC_PHENOTYPE_ID,
+                                                             CosmicPhenotypes.PRIMARY_SITE,
+                                                             CosmicPhenotypes.PRIMARY_HISTOLOGY]]
     if filtered_gsm_address == "":
         gsm = read_gsm_from_file(cosmic_gsm_address=cosmic_gsm_address,
                                  samples=samples,
@@ -184,8 +207,9 @@ def predict_driver_mutations(cosmic_samples_address: str,
     mutation_ids = get_mutation_ids_from_gsm(gsm)
     recommended_transcripts = get_recommended_transcripts_from_gsm(gsm, cancer_gene_info)
     unique_aa_subs = unique_aa_subs_per_gene_phenotype_pair(mutation_ids,
+                                                            phenotypes,
                                                             sample_threshold=sample_limit,
                                                             percentage_threshold=percentage_limit)
     driver_mutations = finding_rare_mutations(unique_aa_subs, gene_lengths)
-    df = join(driver_mutations, recommended_transcripts, shared_column=GSM.GENOMIC_MUTATION_ID)
+    df = join(driver_mutations, recommended_transcripts, left_columns=[GSM.GENOMIC_MUTATION_ID])
     return deal_with_data(df, output_file=output_address, df_description="driver mutations")

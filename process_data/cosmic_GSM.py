@@ -1,6 +1,6 @@
 import pandas as pd
 
-from data_frame_columns.Cosmic import GSM, CosmicTranscripts
+from data_frame_columns.Cosmic import *
 from pandas_tools.batch_read import batch_read_and_filter
 from pandas_tools.column_operations import remove_excessive_count, count_rows, create_column_from_apply
 from pandas_tools.data import verify_path_exists, join
@@ -37,8 +37,12 @@ def get_mutation_ids_from_gsm(gsm: pd.DataFrame):
     print("--Creating dataframe of unique mutation, sample pairs--")
     print("--Filtered gsm is shape {x}--".format(x=gsm.shape))
     df = gsm.copy(deep=True)
-    mutation_ids = df[[GSM.GENE_SYMBOL, GSM.COSMIC_GENE_ID, GSM.COSMIC_SAMPLE_ID, GSM.COSMIC_PHENOTYPE_ID,
-                       GSM.GENOMIC_MUTATION_ID, GSM.HGVSG]]
+    mutation_ids = df[[GSM.GENE_SYMBOL,
+                       GSM.COSMIC_GENE_ID,
+                       GSM.COSMIC_SAMPLE_ID,
+                       GSM.COSMIC_PHENOTYPE_ID,
+                       GSM.GENOMIC_MUTATION_ID,
+                       GSM.HGVSG]]
     print("--Restricting to necessary columns, shape {x}--".format(x=mutation_ids.shape))
     mutation_ids.drop_duplicates(inplace=True)
     print("--Dropping duplicate rows, shape {x}--".format(x=mutation_ids.shape))
@@ -64,7 +68,7 @@ def get_recommended_transcripts_from_gsm(gsm: pd.DataFrame,
     df = join(df,
               cancer_gene_info.cosmic_cancer_transcripts[[CosmicTranscripts.TRANSCRIPT_ACCESSION,
                                                           CosmicTranscripts.IS_CANONICAL]],
-              GSM.TRANSCRIPT_ACCESSION)
+              [GSM.TRANSCRIPT_ACCESSION])
     print(df.shape)
 
     count_rows(df,
