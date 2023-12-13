@@ -50,7 +50,7 @@ def unique_aa_subs_per_gene_phenotype_pair(mutation_id_info: pd.DataFrame,
                                            percentage_threshold=0.03):
     print("---Adding phenotype information to the mutation id dataframe---")
     mutation_id_info = join(mutation_id_info, phenotypes, [GSM.COSMIC_PHENOTYPE_ID])
-    mutation_id_info.drop(GSM.COSMIC_PHENOTYPE_ID)
+    mutation_id_info.drop(GSM.COSMIC_PHENOTYPE_ID, axis=1)
 
     print("---Calculating total number of point substitutions per phenotype, gene pair---")
     mutation_df = mutation_id_info.copy(deep=True)
@@ -101,6 +101,7 @@ def unique_aa_subs_per_gene_phenotype_pair(mutation_id_info: pd.DataFrame,
                                GSM.GENE_SYMBOL,
                                GSM.COSMIC_GENE_ID,
                                GSM.GENOMIC_MUTATION_ID,
+                               GSM.HGVSG,
                                ExtraColumns.RESIDUE_COUNT,
                                ExtraColumns.TOTAL_MUTATIONS]].copy(deep=True)
     mutation_df.drop_duplicates(inplace=True)
