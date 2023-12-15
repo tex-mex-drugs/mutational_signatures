@@ -223,7 +223,8 @@ def predict_driver_mutations(cosmic_samples_address: str,
             deal_with_data(gsm, gsm_output, "filtered GSM dataframe")
     else:
         gsm = read_from_file(input_file=filtered_gsm_address,
-                             df_description="Prefiltered GSM dataframe")
+                             df_description="Prefiltered GSM dataframe",
+                             index_col=0)
 
     mutation_ids = get_mutation_ids_from_gsm(gsm)
     recommended_transcripts = get_recommended_transcripts_from_gsm(gsm, cancer_gene_info)

@@ -3,10 +3,13 @@ import os
 import pandas as pd
 
 
-def read_from_file(input_file: str, df_description):
+def read_from_file(input_file: str, df_description, index_col=""):
     print("---Reading {description} from file: {address}---"
           .format(description=df_description, address=input_file))
-    df = pd.read_csv(input_file, sep="\t")
+    if index_col =="":
+        df = pd.read_csv(input_file, sep="\t")
+    else:
+        df = pd.read_csv(input_file, sep="\t", index_col=index_col)
     print("---{description} shape: {shape}---"
           .format(description=df_description, shape=df.shape))
     return df
