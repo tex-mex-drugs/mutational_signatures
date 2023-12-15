@@ -19,10 +19,10 @@ def read_gsm_from_file(cosmic_gsm_address: str,
                                 chunk_size=100000,
                                 description="Genome Screens Mutant")
     gsm = remove_excessive_count(df=gsm,
-                                 description="Removing samples with excessive mutations",
+                                 description="Removing samples with excessive mutations or not enough",
                                  grouped_column=GSM.COSMIC_SAMPLE_ID,
                                  counted_column=GSM.GENOMIC_MUTATION_ID,
-                                 lower_threshold=0,
+                                 lower_threshold=20,
                                  upper_threshold=1000)
     print("---Finished processing GSM file---")
     print(gsm.shape)

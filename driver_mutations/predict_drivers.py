@@ -20,11 +20,19 @@ def filter_mutation_aa(row):
     return True
 
 
+def restrict_to_large_phenotypic_groups(gsm: pd.DataFrame):
+    gsm["SAMPLE_COUNT"] = gsm.groupby([CosmicPhenotypes.PRIMARY_SITE,
+                                       CosmicPhenotypes.PRIMARY_HISTOLOGY])[GSM.COSMIC_SAMPLE_ID].transform('nunique')
+    df = gsm.loc[gsm["SAMPLE_COUNT"] >= 20]
+    df.drop("SAMPLE_COUNT", axis=1, inplace=True)
+    return df
+
+
 # Find probability that the number of mutations causing this amino acid substitution is >= observed
 # given no of mutations affecting gene, using the null hypothesis (that every mutation has an equal chance of occurring)
 def residue_probability(row, gene_lengths: Genes):
     # total_mutations = number of point mutations seen in that phenotype, gene pair
-    total_mutations = row[ExtraColumns.TOTAL_MUTATIONS]
+    total_mutations = row[ExtraColumns.TOTAL_MUTATIONS_IN_GENE]
     # residue_mutations = number of mutations seen for that phenotype, gene that cause the same amino acid substitution
     rc = row[ExtraColumns.RESIDUE_COUNT]
     gene_df = gene_lengths.gene_lengths
@@ -51,6 +59,7 @@ def unique_aa_subs_per_gene_phenotype_pair(mutation_id_info: pd.DataFrame,
     print("---Adding phenotype information to the mutation id dataframe---")
     mutation_id_info = join(mutation_id_info, phenotypes, [GSM.COSMIC_PHENOTYPE_ID])
     mutation_id_info.drop(GSM.COSMIC_PHENOTYPE_ID, axis=1)
+    mutation_id_info = restrict_to_large_phenotypic_groups(mutation_id_info)
 
     print("---Calculating total number of point substitutions per phenotype, gene pair---")
     mutation_df = mutation_id_info.copy(deep=True)
@@ -59,7 +68,16 @@ def unique_aa_subs_per_gene_phenotype_pair(mutation_id_info: pd.DataFrame,
                                 CosmicPhenotypes.PRIMARY_HISTOLOGY,
                                 GSM.COSMIC_GENE_ID],
                counted_column=GSM.COSMIC_GENE_ID,
-               new_column=ExtraColumns.TOTAL_MUTATIONS,
+               new_column=ExtraColumns.TOTAL_MUTATIONS_IN_GENE,
+               count_type="count")
+    print(mutation_df.shape)
+
+    print("---Calculating total number of point substitutions per phenotype, gene pair---")
+    count_rows(df=mutation_df,
+               grouped_columns=[CosmicPhenotypes.PRIMARY_SITE,
+                                CosmicPhenotypes.PRIMARY_HISTOLOGY],
+               counted_column=GSM.COSMIC_SAMPLE_ID,
+               new_column=ExtraColumns.TOTAL_SAMPLES_IN_PHENOTYPE,
                count_type="count")
     print(mutation_df.shape)
 
@@ -103,7 +121,9 @@ def unique_aa_subs_per_gene_phenotype_pair(mutation_id_info: pd.DataFrame,
                                GSM.GENOMIC_MUTATION_ID,
                                GSM.HGVSG,
                                ExtraColumns.RESIDUE_COUNT,
-                               ExtraColumns.TOTAL_MUTATIONS]].copy(deep=True)
+                               ExtraColumns.TOTAL_MUTATIONS_IN_GENE,
+                               ExtraColumns.TOTAL_SAMPLES_IN_PHENOTYPE,
+                               ExtraColumns.SAMPLE_COUNT]].copy(deep=True)
     mutation_df.drop_duplicates(inplace=True)
     print(mutation_df.shape)
     return mutation_df
@@ -123,9 +143,9 @@ def finding_rare_mutations(unique_aa_subs: pd.DataFrame, gene_lengths: Genes):
     print(unique_aa_subs.shape)
 
     unique_aa_subs.sort_values(by=[GSM.GENE_SYMBOL,
+                                   GSM.GENOMIC_MUTATION_ID,
                                    CosmicPhenotypes.PRIMARY_SITE,
-                                   CosmicPhenotypes.PRIMARY_HISTOLOGY,
-                                   GSM.GENOMIC_MUTATION_ID],
+                                   CosmicPhenotypes.PRIMARY_HISTOLOGY],
                                inplace=True)
     print("---Finished processing mutations---")
     return unique_aa_subs
@@ -159,7 +179,7 @@ def benjamini_hochberg_correction(unique_aa_subs: pd.DataFrame):
                CosmicPhenotypes.PRIMARY_HISTOLOGY,
                GSM.COSMIC_GENE_ID])
     df[ExtraColumns.BENJAMINI_HOCHBERG] = df.apply(lambda x: get_benjamini_hochberg_number(x), axis=1)
-    df.drop([ExtraColumns.BH_GROUPS, ExtraColumns.PROB_GROUPS], axis=1)
+    df.drop([ExtraColumns.BH_GROUPS, ExtraColumns.PROB_GROUPS], axis=1, inplace=True)
     print(df.shape)
     return df
 
