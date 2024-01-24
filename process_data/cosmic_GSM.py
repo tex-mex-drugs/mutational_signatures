@@ -8,22 +8,54 @@ from process_data.cancer_gene_info import CancerGeneInfo
 from process_data.cosmic_samples import CosmicSamples
 
 
+def read_gsm_cancer_genes_from_file(cosmic_gsm_address: str,
+                                    samples: CosmicSamples,
+                                    cancer_gene_info,
+                                    lower_threshold=0,
+                                    upper_threshold=1000):
+    sample_ids = samples.retrieve_sample_ids()
+    chunk_filter = gsm_driver_filter
+    positional_arguments = [cancer_gene_info.cosmic_cancer_genes, sample_ids]
+
+    return read_gsm_from_file_with_filter(cosmic_gsm_address,
+                                          positional_arguments,
+                                          chunk_filter,
+                                          lower_threshold,
+                                          upper_threshold)
+
+
 def read_gsm_from_file(cosmic_gsm_address: str,
                        samples: CosmicSamples,
-                       cancer_gene_info: CancerGeneInfo):
-    gsm_verify(cosmic_gsm_address)
+                       lower_threshold=0,
+                       upper_threshold=1000):
     sample_ids = samples.retrieve_sample_ids()
+    chunk_filter = gsm_filter
+    positional_arguments = [sample_ids]
+
+    return read_gsm_from_file_with_filter(cosmic_gsm_address,
+                                          positional_arguments,
+                                          chunk_filter,
+                                          lower_threshold,
+                                          upper_threshold)
+
+
+def read_gsm_from_file_with_filter(cosmic_gsm_address: str,
+                                   positional_arguments: list,
+                                   chunk_filter,
+                                   lower_threshold,
+                                   upper_threshold):
+    gsm_verify(cosmic_gsm_address)
     gsm = batch_read_and_filter(input_file=cosmic_gsm_address,
-                                chunk_filter=gsm_driver_filter,
-                                positional_arguments=[cancer_gene_info.cosmic_cancer_genes, sample_ids],
+                                chunk_filter=chunk_filter,
+                                positional_arguments=positional_arguments,
                                 chunk_size=100000,
                                 description="Genome Screens Mutant")
     gsm = remove_excessive_count(df=gsm,
-                                 description="Removing samples with excessive mutations or not enough",
+                                 description="Removing samples with excessive mutations",
                                  grouped_column=GSM.COSMIC_SAMPLE_ID,
                                  counted_column=GSM.GENOMIC_MUTATION_ID,
-                                 lower_threshold=20,
-                                 upper_threshold=1000)
+                                 lower_threshold=lower_threshold,
+                                 upper_threshold=upper_threshold)
     print("---Finished processing GSM file---")
     print(gsm.shape)
     return gsm
@@ -106,4 +138,9 @@ def score(row: pd.DataFrame,
 def gsm_driver_filter(cancer_genes, sample_ids, chunk):
     return chunk.loc[(chunk[GSM.COSMIC_GENE_ID].isin(cancer_genes)) &
                      (chunk[GSM.COSMIC_SAMPLE_ID].isin(sample_ids)) &
+                     (chunk[GSM.HGVSG].str.strip().str[-2] == '>')]
+
+
+def gsm_filter(sample_ids, chunk):
+    return chunk.loc[(chunk[GSM.COSMIC_SAMPLE_ID].isin(sample_ids)) &
                      (chunk[GSM.HGVSG].str.strip().str[-2] == '>')]

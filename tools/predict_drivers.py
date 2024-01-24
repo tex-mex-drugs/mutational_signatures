@@ -216,9 +216,9 @@ def predict_driver_mutations(cosmic_samples_address: str,
                                                              CosmicPhenotypes.PRIMARY_SITE,
                                                              CosmicPhenotypes.PRIMARY_HISTOLOGY]]
     if filtered_gsm_address == "":
-        gsm = read_gsm_from_file(cosmic_gsm_address=cosmic_gsm_address,
-                                 samples=samples,
-                                 cancer_gene_info=cancer_gene_info)
+        gsm = read_gsm_cancer_genes_from_file(cosmic_gsm_address=cosmic_gsm_address,
+                                              samples=samples,
+                                              cancer_gene_info=cancer_gene_info)
         if gsm_output != "":
             deal_with_data(gsm, gsm_output, "filtered GSM dataframe")
     else:
