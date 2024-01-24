@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "bioinformatics"
+version = "0.1.0"
+description = ""
+authors = ["AdrenalinJunkie <woollc007@gmail.com>"]
+readme = "README.md"
+packages = [
+    { include = "data_frame_columns" },
+    { include = "driver_mutations" },
+    { include = "pandas_tools" },
+    { include = "process_data" }
+]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+pandas = "^2.1.2"
+scipy = "^1.11.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
