@@ -30,7 +30,7 @@ def name_of_phenotype_directory(start_directory, phenotype):
 def create_vcf_from_sample(dataframe: pd.DataFrame,
                            sample_id: str,
                            file_name: str):
-    hgvsg_list = list(pd.unique(dataframe.loc[dataframe[GSM.COSMIC_SAMPLE_ID] == sample_id][[GSM.HGVSG]]))
+    hgvsg_list = dataframe.loc[dataframe[GSM.COSMIC_SAMPLE_ID] == sample_id][GSM.HGVSG].unique()
     if len(hgvsg_list) == 0:
         print("WARN---sample {sample} was not found in dataframe---".format(sample=sample_id))
         return
@@ -64,7 +64,7 @@ def find_mutational_signatures(filtered_gsm: pd.DataFrame,
     check_folder_exists_or_create(output_dir)
 
     print("---Compile list of phenotypes---")
-    phenotypes = list(pd.unique(filtered_gsm[[GSM.COSMIC_PHENOTYPE_ID]]))
+    phenotypes = filtered_gsm[GSM.COSMIC_PHENOTYPE_ID].unique()
     print("---There are {n} unique phenotypes present---".format(n=len(phenotypes)))
     print("---Creating a vcf file for each sample---")
     create_vcfs_from_gsm(filtered_gsm, output_dir, phenotypes)
@@ -84,6 +84,30 @@ def find_mutational_signatures(filtered_gsm: pd.DataFrame,
     print("Success!")
 
 
+def test_find_mutational_signatures(filtered_gsm: pd.DataFrame,
+                                    output_dir: str):
+    print("---Running test version of find mutational signatures---")
+    print("---Check if output directory exists or create output directory---")
+    check_folder_exists_or_create(output_dir)
+
+    print("---Compile list of phenotypes---")
+    phenotypes = filtered_gsm[GSM.COSMIC_PHENOTYPE_ID].unique()
+    print("---There are {n} unique phenotypes present---".format(n=len(phenotypes)))
+    phenotype = phenotypes[0]
+    print("---Creating a vcf file for each sample---")
+    create_vcfs_from_gsm(filtered_gsm, output_dir, [phenotype])
+    print("---Testing sigprofiler on phenotype {phen}---".format(phen=phenotype))
+    sig.sigProfilerExtractor("vcf",
+                             "results",
+                             name_of_phenotype_directory(output_dir, phenotype),
+                             reference_genome="GRCh38",
+                             minimum_signatures=1,
+                             maximum_signatures=10,
+                             nmf_replicates=100)
+    print("---Successfully run sigprofiler for phenotype {phen}---".format(phen=phenotype))
+    print("Success!")
+
+
 def filter_and_run(cosmic_samples_address: str,
                    cosmic_gsm_address: str,
                    output_dir: str,
@@ -100,3 +124,9 @@ def run(filtered_gsm_address: str,
         output_dir: str):
     gsm = read_from_file(filtered_gsm_address, "filtered GSM dataframe")
     find_mutational_signatures(gsm, output_dir)
+
+
+def test_run(filtered_gsm_address: str,
+             output_dir: str):
+    gsm = read_from_file(filtered_gsm_address, "filtered GSM dataframe")
+    test_find_mutational_signatures(gsm, output_dir)
