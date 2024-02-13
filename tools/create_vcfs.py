@@ -42,13 +42,12 @@ def create_vcf_from_sample(dataframe: pd.DataFrame,
     return
 
 
-def create_vcfs_from_gsm(filtered_gsm: pd.DataFrame, start_directory: str):
+def create_vcfs_from_gsm(filtered_gsm: pd.DataFrame, start_directory: str, phenotypes: list):
     if not os.path.isdir(start_directory):
         print("ERROR---{dir} is not a valid directory---".format(dir=start_directory))
         return
     samples = filtered_gsm[[GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_SAMPLE_ID]].drop_duplicates()
     samples.sort_values([GSM.COSMIC_PHENOTYPE_ID, GSM.COSMIC_SAMPLE_ID], inplace=True)
-    phenotypes = samples[[GSM.COSMIC_PHENOTYPE_ID]].unique()
 
     for phenotype in phenotypes:
         print("---Creating folder for phenotype {phen}---".format(phen=phenotype))
@@ -66,12 +65,15 @@ def find_mutational_signatures(filtered_gsm: pd.DataFrame,
     check_folder_exists_or_create(output_dir)
 
     print("---Compile list of phenotypes---")
-    phenotypes = filtered_gsm[[GSM.COSMIC_PHENOTYPE_ID]].unique()
+    phenotypes = list(filtered_gsm[[GSM.COSMIC_PHENOTYPE_ID]].unique())
+    print("---There are {n} unique phenotypes present---".format(n=len(phenotypes)))
     print("---Creating a vcf file for each sample---")
-    create_vcfs_from_gsm(filtered_gsm, output_dir)
+    create_vcfs_from_gsm(filtered_gsm, output_dir, phenotypes)
     print("---Running sigprofiler---")
+    i = 0
     for phenotype in phenotypes:
-        print("---{phen}---".format(phen=phenotype))
+        i += 1
+        print("---{n}---{phen}---".format(n=i, phen=phenotype))
         sig.sigProfilerExtractor("vcf",
                                  "results",
                                  name_of_phenotype_directory(output_dir, phenotype),
