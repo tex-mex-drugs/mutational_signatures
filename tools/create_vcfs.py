@@ -58,28 +58,12 @@ def create_vcfs_from_gsm(filtered_gsm: pd.DataFrame, start_directory: str):
             create_vcf_from_sample(filtered_gsm, sample, sample_file)
 
 
-def find_mutational_signatures(cosmic_samples_address: str,
-                               cosmic_gsm_address: str,
-                               output_dir: str,
-                               gsm_output="",
-                               filtered_gsm_address=""):
+def find_mutational_signatures(filtered_gsm: pd.DataFrame,
+                               output_dir: str):
     check_folder_exists_or_create(output_dir)
-    CosmicSamples.verify(input_file=cosmic_samples_address)
-    if filtered_gsm_address == "":
-        gsm_verify(cosmic_gsm_address=cosmic_gsm_address)
 
-    samples = CosmicSamples(input_file=cosmic_samples_address)
-    if filtered_gsm_address == "":
-        gsm = read_gsm_from_file(cosmic_gsm_address=cosmic_gsm_address,
-                                 samples=samples,
-                                 lower_threshold=30)
-        if gsm_output != "":
-            deal_with_data(gsm, gsm_output, "filtered GSM dataframe")
-    else:
-        gsm = read_from_file(input_file=filtered_gsm_address,
-                             df_description="Prefiltered GSM dataframe")
-    phenotypes = gsm[[GSM.COSMIC_PHENOTYPE_ID]].drop_duplicates().tolist()
-    create_vcfs_from_gsm(gsm, output_dir)
+    phenotypes = filtered_gsm[[GSM.COSMIC_PHENOTYPE_ID]].drop_duplicates().tolist()
+    create_vcfs_from_gsm(filtered_gsm, output_dir)
     for phenotype in phenotypes:
         sig.sigProfilerExtractor("vcf",
                                  "results",
@@ -88,3 +72,21 @@ def find_mutational_signatures(cosmic_samples_address: str,
                                  minimum_signatures=1,
                                  maximum_signatures=10,
                                  nmf_replicates=100)
+
+
+def filter_and_run(cosmic_samples_address: str,
+                   cosmic_gsm_address: str,
+                   output_dir: str,
+                   filtered_gsm_output_address=""):
+    samples = CosmicSamples(cosmic_samples_address)
+    gsm_verify(cosmic_gsm_address)
+    gsm = read_gsm_from_file(cosmic_gsm_address, samples, lower_threshold=30)
+    if filtered_gsm_output_address != "":
+        deal_with_data(gsm, filtered_gsm_output_address, "filtered GSM dataframe")
+    find_mutational_signatures(gsm, output_dir)
+
+
+def run(filtered_gsm_address: str,
+        output_dir: str):
+    gsm = read_from_file(filtered_gsm_address, "filtered GSM dataframe")
+    find_mutational_signatures(gsm, output_dir)
