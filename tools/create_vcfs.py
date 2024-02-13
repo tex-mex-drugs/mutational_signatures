@@ -30,8 +30,7 @@ def name_of_phenotype_directory(start_directory, phenotype):
 def create_vcf_from_sample(dataframe: pd.DataFrame,
                            sample_id: str,
                            file_name: str):
-    hgvsg_list = dataframe.loc[
-        dataframe[GSM.COSMIC_SAMPLE_ID] == sample_id][[GSM.HGVSG]].unique()
+    hgvsg_list = list(pd.unique(dataframe.loc[dataframe[GSM.COSMIC_SAMPLE_ID] == sample_id][[GSM.HGVSG]]))
     if len(hgvsg_list) == 0:
         print("WARN---sample {sample} was not found in dataframe---".format(sample=sample_id))
         return
@@ -65,7 +64,7 @@ def find_mutational_signatures(filtered_gsm: pd.DataFrame,
     check_folder_exists_or_create(output_dir)
 
     print("---Compile list of phenotypes---")
-    phenotypes = list(filtered_gsm[[GSM.COSMIC_PHENOTYPE_ID]].unique())
+    phenotypes = list(pd.unique(filtered_gsm[[GSM.COSMIC_PHENOTYPE_ID]]))
     print("---There are {n} unique phenotypes present---".format(n=len(phenotypes)))
     print("---Creating a vcf file for each sample---")
     create_vcfs_from_gsm(filtered_gsm, output_dir, phenotypes)
