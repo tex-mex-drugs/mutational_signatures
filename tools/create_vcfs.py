@@ -74,7 +74,7 @@ def find_mutational_signatures(filtered_gsm: pd.DataFrame,
         i += 1
         print("---{n}---{phen}---".format(n=i, phen=phenotype))
         sig.sigProfilerExtractor("vcf",
-                                 "results",
+                                 name_of_phenotype_directory(output_dir, phenotype) + "_results",
                                  name_of_phenotype_directory(output_dir, phenotype),
                                  reference_genome="GRCh38",
                                  minimum_signatures=1,
