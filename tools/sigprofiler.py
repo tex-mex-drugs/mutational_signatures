@@ -58,20 +58,26 @@ def filter_and_run(cosmic_samples_address: str,
     genome_samples = CosmicSamples(cosmic_samples_address, genome=True, exome=False)
     exome_samples = CosmicSamples(cosmic_samples_address, genome=False, exome=True)
     gsm_verify(cosmic_gsm_address)
+    print("---Reading whole genome screens from file---")
     genome_gsm = read_gsm_from_file(cosmic_gsm_address,
                                     genome_samples,
                                     lower_threshold=None,
                                     upper_threshold=None)
     if test:
+        print("---Testing system using first phenotype---")
         find_mutational_signatures(genome_gsm, output_dir, exome=False, test=True)
         return
+    print("---Reading whole exome screens from file---")
     exome_gsm = read_gsm_from_file(cosmic_gsm_address,
                                    exome_samples,
                                    lower_threshold=None,
                                    upper_threshold=None)
     if filtered_gsm_output_address != "":
+        print("---Writing filtered GSM to file---")
         deal_with_data(pd.concat([genome_gsm, exome_gsm], ignore_index=True),
                        filtered_gsm_output_address,
                        "filtered GSM dataframe")
+    print("---Running sigprofiler on whole exome screens---")
     find_mutational_signatures(exome_gsm, output_dir, exome=True)
+    print("---Running sigprofiler on whole genome screens---")
     find_mutational_signatures(genome_gsm, output_dir, exome=False)
