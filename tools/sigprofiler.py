@@ -1,4 +1,7 @@
-from create_vcfs import *
+from pandas_tools.data import deal_with_data
+from process_data.cosmic_GSM import gsm_verify, read_gsm_from_file
+from process_data.cosmic_samples import CosmicSamples
+from .create_vcfs import *
 
 from SigProfilerMatrixGenerator import install as genInstall
 from SigProfilerAssignment import Analyzer as Analyze

@@ -1,11 +1,7 @@
 import os
 
 import pandas as pd
-from SigProfilerExtractor import sigpro as sig
 from data_frame_columns.Cosmic import GSM
-from pandas_tools.data import deal_with_data, read_from_file
-from process_data.cosmic_GSM import read_gsm_from_file, gsm_verify
-from process_data.cosmic_samples import CosmicSamples
 
 
 def from_hgvsg_create_vcf_row(hgvsg):
