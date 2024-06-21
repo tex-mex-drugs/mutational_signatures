@@ -77,11 +77,11 @@ def filter_gsm(cosmic_samples_address: str,
 
 
 def run(output_dir: str,
-        filtered_gsm_output_address: str,
         exome_gsm: pd.DataFrame,
         genome_gsm: pd.DataFrame,
+        filtered_gsm_output_address="",
         test=False):
-    if not exome_gsm or not genome_gsm:
+    if exome_gsm is None or genome_gsm is None:
         if filtered_gsm_output_address:
             genome_gsm = read_from_file(filtered_gsm_output_address + "_genome.tsv",
                                         "filtered genomes",
@@ -111,7 +111,7 @@ def filter_and_run(cosmic_samples_address: str,
         find_mutational_signatures(genome_gsm, output_dir, exome=False, test=True)
         return
     run(output_dir,
-        filtered_gsm_output_address,
         exome_gsm,
         genome_gsm,
+        filtered_gsm_output_address,
         test)
