@@ -1,4 +1,4 @@
-from pandas_tools.data import deal_with_data
+from pandas_tools.data import deal_with_data, read_from_file
 from process_data.cosmic_GSM import gsm_verify, read_gsm_from_file
 from process_data.cosmic_samples import CosmicSamples
 from .create_vcfs import *
@@ -71,8 +71,8 @@ def filter_gsm(cosmic_samples_address: str,
                                    upper_threshold=None)
     if filtered_gsm_output_address != "":
         print("---Writing filtered GSM to file---")
-        deal_with_data(genome_gsm, filtered_gsm_output_address + "_genome")
-        deal_with_data(exome_gsm, filtered_gsm_output_address + "_exome")
+        deal_with_data(genome_gsm, filtered_gsm_output_address + "_genome.tsv")
+        deal_with_data(exome_gsm, filtered_gsm_output_address + "_exome.tsv")
     return genome_gsm, exome_gsm
 
 
@@ -83,8 +83,12 @@ def run(output_dir: str,
         test=False):
     if not exome_gsm or not genome_gsm:
         if filtered_gsm_output_address:
-            genome_gsm = pd.read_csv(filtered_gsm_output_address + "_genome")
-            exome_gsm = pd.read_csv(filtered_gsm_output_address + "_exome")
+            genome_gsm = read_from_file(filtered_gsm_output_address + "_genome.tsv",
+                                        "filtered genomes",
+                                        index_col=0)
+            exome_gsm = read_from_file(filtered_gsm_output_address + "_exome.tsv",
+                                       "filtered exomes",
+                                       index_col=0)
         else:
             raise ValueError("No way to acquire exome gsm and genome gsm provided")
     genInstall.install('GRCh38')
