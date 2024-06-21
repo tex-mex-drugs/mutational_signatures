@@ -53,11 +53,9 @@ def find_mutational_signatures(filtered_gsm: pd.DataFrame,
     print("Success!")
 
 
-def filter_and_run(cosmic_samples_address: str,
-                   cosmic_gsm_address: str,
-                   output_dir: str,
-                   filtered_gsm_output_address="",
-                   test=False):
+def filter_gsm(cosmic_samples_address: str,
+               cosmic_gsm_address: str,
+               filtered_gsm_output_address=""):
     genome_samples = CosmicSamples(cosmic_samples_address, genome=True, exome=False)
     exome_samples = CosmicSamples(cosmic_samples_address, genome=False, exome=True)
     gsm_verify(cosmic_gsm_address)
@@ -66,10 +64,6 @@ def filter_and_run(cosmic_samples_address: str,
                                     genome_samples,
                                     lower_threshold=None,
                                     upper_threshold=None)
-    if test:
-        print("---Testing system using first phenotype---")
-        find_mutational_signatures(genome_gsm, output_dir, exome=False, test=True)
-        return
     print("---Reading whole exome screens from file---")
     exome_gsm = read_gsm_from_file(cosmic_gsm_address,
                                    exome_samples,
@@ -77,10 +71,42 @@ def filter_and_run(cosmic_samples_address: str,
                                    upper_threshold=None)
     if filtered_gsm_output_address != "":
         print("---Writing filtered GSM to file---")
-        deal_with_data(pd.concat([genome_gsm, exome_gsm], ignore_index=True),
-                       filtered_gsm_output_address,
-                       "filtered GSM dataframe")
+        deal_with_data(genome_gsm, filtered_gsm_output_address + "_genome")
+        deal_with_data(exome_gsm, filtered_gsm_output_address + "_exome")
+    return genome_gsm, exome_gsm
+
+
+def run(output_dir: str,
+        filtered_gsm_output_address: str,
+        exome_gsm: pd.DataFrame,
+        genome_gsm: pd.DataFrame,
+        test=False):
+    if not exome_gsm or not genome_gsm:
+        if filtered_gsm_output_address:
+            genome_gsm = pd.read_csv(filtered_gsm_output_address + "_genome")
+            exome_gsm = pd.read_csv(filtered_gsm_output_address + "_exome")
+        else:
+            raise ValueError("No way to acquire exome gsm and genome gsm provided")
     print("---Running sigprofiler on whole exome screens---")
-    find_mutational_signatures(exome_gsm, output_dir, exome=True)
+    find_mutational_signatures(exome_gsm, output_dir, exome=True, test=test)
     print("---Running sigprofiler on whole genome screens---")
-    find_mutational_signatures(genome_gsm, output_dir, exome=False)
+    find_mutational_signatures(genome_gsm, output_dir, exome=False, test=test)
+
+
+def filter_and_run(cosmic_samples_address: str,
+                   cosmic_gsm_address: str,
+                   output_dir: str,
+                   filtered_gsm_output_address="",
+                   test=False):
+    genome_gsm, exome_gsm = filter_gsm(cosmic_samples_address,
+                                       cosmic_gsm_address,
+                                       filtered_gsm_output_address)
+    if test:
+        print("---Testing system using first phenotype---")
+        find_mutational_signatures(genome_gsm, output_dir, exome=False, test=True)
+        return
+    run(output_dir,
+        filtered_gsm_output_address,
+        exome_gsm,
+        genome_gsm,
+        test)
