@@ -18,6 +18,8 @@ def find_mutational_signatures(filtered_gsm: pd.DataFrame,
     print("---Compile list of phenotypes---")
     phenotypes = filtered_gsm[GSM.COSMIC_PHENOTYPE_ID].unique()
     print("---There are {n} unique phenotypes present---".format(n=len(phenotypes)))
+    if test:
+        phenotypes = phenotypes[:1]
     print("---Creating a vcf file for each sample---")
     create_vcfs_from_gsm(filtered_gsm, output_dir, phenotypes)
     print("---Running sigprofiler---")
@@ -87,9 +89,9 @@ def run(output_dir: str,
             raise ValueError("No way to acquire exome gsm and genome gsm provided")
     genInstall.install('GRCh38')
     print("---Running sigprofiler on whole exome screens---")
-    find_mutational_signatures(exome_gsm, output_dir, exome=True, test=test)
+    find_mutational_signatures(exome_gsm, output_dir + "_exome", exome=True, test=test)
     print("---Running sigprofiler on whole genome screens---")
-    find_mutational_signatures(genome_gsm, output_dir, exome=False, test=test)
+    find_mutational_signatures(genome_gsm, output_dir + "_genome", exome=False, test=test)
 
 
 def filter_and_run(cosmic_samples_address: str,
