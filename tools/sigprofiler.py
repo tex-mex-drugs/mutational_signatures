@@ -6,8 +6,6 @@ from .create_vcfs import *
 from SigProfilerMatrixGenerator import install as genInstall
 from SigProfilerAssignment import Analyzer as Analyze
 
-genInstall.install('GRCh38')
-
 
 def find_mutational_signatures(filtered_gsm: pd.DataFrame,
                                output_dir: str,
@@ -87,6 +85,7 @@ def run(output_dir: str,
             exome_gsm = pd.read_csv(filtered_gsm_output_address + "_exome")
         else:
             raise ValueError("No way to acquire exome gsm and genome gsm provided")
+    genInstall.install('GRCh38')
     print("---Running sigprofiler on whole exome screens---")
     find_mutational_signatures(exome_gsm, output_dir, exome=True, test=test)
     print("---Running sigprofiler on whole genome screens---")
