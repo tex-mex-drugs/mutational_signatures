@@ -33,7 +33,7 @@ def create_vcf_from_sample(dataframe: pd.DataFrame,
     row_list = [from_hgvsg_create_vcf_row(hgvsg) for hgvsg in hgvsg_list]
     vcf = pd.DataFrame(row_list)
     vcf.columns = ["#CHROM", "POS", "FILTER", "REF", "ALT"]
-    vcf.to_csv(file_name, sep="\t")
+    vcf.to_csv(file_name, sep="\t", index=False)
     return
 
 

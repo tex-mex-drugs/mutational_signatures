@@ -1,13 +1,11 @@
+import json
+
+from SigProfilerAssignment import Analyzer as Analyze
+
 from pandas_tools.data import deal_with_data, read_from_file
 from process_data.cosmic_GSM import gsm_verify, read_gsm_from_file
 from process_data.cosmic_samples import CosmicSamples
 from .create_vcfs import *
-import json
-
-from SigProfilerMatrixGenerator import install as genInstall
-from SigProfilerAssignment import Analyzer as Analyze
-
-genInstall.install('GRCh38')
 
 
 def filter_gsm(cosmic_samples_address: str,
@@ -42,8 +40,9 @@ def get_specific_directory(output_dir: str,
     return "{dir}_{tag}".format(dir=output_dir, tag=get_tag(exome))
 
 
-def get_phenotypes_location(output_dir:str):
+def get_phenotypes_location(output_dir: str):
     return output_dir + "/phenotypes.json"
+
 
 def read_phenotypes(output_dir):
     with open(get_phenotypes_location(output_dir), 'r') as file:
@@ -57,7 +56,7 @@ def turn_gsm_into_vcfs(filtered_gsm: pd.DataFrame,
     check_folder_exists_or_create(output_dir)
 
     print("---Compile list of phenotypes---")
-    phenotypes = filtered_gsm[GSM.COSMIC_PHENOTYPE_ID].unique()
+    phenotypes = filtered_gsm[GSM.COSMIC_PHENOTYPE_ID].unique().tolist()
     print("---There are {n} unique phenotypes present---".format(n=len(phenotypes)))
     if test:
         phenotypes = phenotypes[:1]
@@ -113,16 +112,16 @@ def run(output_dir: str,
     genome_dir = get_specific_directory(output_dir, exome=False)
     if not from_vcf:
         if not cosmic_samples_address or not cosmic_gsm_address:
-            genome_gsm = read_from_file(get_specific_directory(filtered_gsm_address, exome=False),
-                                    "whole genome screens",
-                                    index_col=0)
-            exome_gsm = read_from_file(get_specific_directory(filtered_gsm_address, exome=True),
-                                   "whole exome screens",
-                                   index_col=0)
+            genome_gsm = read_from_file(get_specific_directory(filtered_gsm_address, exome=False) + ".tsv",
+                                        "whole genome screens",
+                                        index_col=0)
+            exome_gsm = read_from_file(get_specific_directory(filtered_gsm_address, exome=True) + ".tsv",
+                                       "whole exome screens",
+                                       index_col=0)
         else:
             genome_gsm, exome_gsm = filter_gsm(cosmic_samples_address,
-                                            cosmic_gsm_address,
-                                       filtered_gsm_address)
+                                               cosmic_gsm_address,
+                                               filtered_gsm_address)
         genome_phenotypes = turn_gsm_into_vcfs(genome_gsm,
                                                genome_dir,
                                                test)
@@ -147,3 +146,24 @@ def run(output_dir: str,
                                output_dir=genome_dir,
                                exome=True,
                                test=False)
+
+
+def list_samples_in_folder(folder_path):
+    # Get a list of all files and directories in the specified folder
+    entries = os.listdir(folder_path)
+
+    # Filter out directories, keeping only files
+    files = [entry for entry in entries if os.path.isfile(os.path.join(folder_path, entry))]
+    samples = [file for file in files if file.startswith("COSS")]
+    return samples
+
+
+def fix_vcf_bug(output_dir, exome=False):
+    main_dir = output_dir + "_" + get_tag(exome)
+    phenotypes = read_phenotypes(main_dir)
+    for phenotype in phenotypes:
+        folder = main_dir + "/" + phenotype
+        samples = list_samples_in_folder(folder)
+        for sample in samples:
+            df = pd.read_csv(sample, index_col=0, sep="\t")
+            df.to_csv(sample, index=False, sep="\t")
