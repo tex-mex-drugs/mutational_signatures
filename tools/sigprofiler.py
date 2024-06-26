@@ -1,11 +1,15 @@
 import json
+import os.path
 
 from SigProfilerAssignment import Analyzer as Analyze
 
 from pandas_tools.data import deal_with_data, read_from_file
+from pandas_tools.log import Log
 from process_data.cosmic_GSM import gsm_verify, read_gsm_from_file
 from process_data.cosmic_samples import CosmicSamples
 from .create_vcfs import *
+
+log = Log("../mutational_signatures.log")
 
 
 def filter_gsm(cosmic_samples_address: str,
@@ -14,18 +18,18 @@ def filter_gsm(cosmic_samples_address: str,
     genome_samples = CosmicSamples(cosmic_samples_address, genome=True, exome=False)
     exome_samples = CosmicSamples(cosmic_samples_address, genome=False, exome=True)
     gsm_verify(cosmic_gsm_address)
-    print("---Reading whole genome screens from file---")
+    log.info("Reading whole genome screens from file")
     genome_gsm = read_gsm_from_file(cosmic_gsm_address,
                                     genome_samples,
                                     lower_threshold=None,
                                     upper_threshold=None)
-    print("---Reading whole exome screens from file---")
+    log.info("Reading whole exome screens from file")
     exome_gsm = read_gsm_from_file(cosmic_gsm_address,
                                    exome_samples,
                                    lower_threshold=None,
                                    upper_threshold=None)
     if filtered_gsm_output_address != "":
-        print("---Writing filtered GSM to file---")
+        log.info("Writing filtered GSM to file")
         deal_with_data(genome_gsm, filtered_gsm_output_address + "_genome.tsv")
         deal_with_data(exome_gsm, filtered_gsm_output_address + "_exome.tsv")
     return genome_gsm, exome_gsm
@@ -52,15 +56,15 @@ def read_phenotypes(output_dir):
 def turn_gsm_into_vcfs(filtered_gsm: pd.DataFrame,
                        output_dir: str,
                        test=False):
-    print("---Check if output directory exists or create output directory---")
+    log.info("Check if output directory exists or create output directory")
     check_folder_exists_or_create(output_dir)
 
-    print("---Compile list of phenotypes---")
+    log.info("Compile list of phenotypes")
     phenotypes = filtered_gsm[GSM.COSMIC_PHENOTYPE_ID].unique().tolist()
-    print("---There are {n} unique phenotypes present---".format(n=len(phenotypes)))
+    log.info("There are {n} unique phenotypes present".format(n=len(phenotypes)))
     if test:
         phenotypes = phenotypes[:1]
-    print("---Creating a vcf file for each sample---")
+    log.info("Creating a vcf file for each sample")
     create_vcfs_from_gsm(filtered_gsm, output_dir, phenotypes)
     with open(get_phenotypes_location(output_dir), 'w') as file:
         json.dump(phenotypes, file)
@@ -72,33 +76,43 @@ def find_mutational_signatures(phenotypes: list,
                                exome=False,
                                test=False):
     tag = get_tag(exome)
-    print("---Running sigprofiler on whole {tag} screens---".format(tag=tag))
+    log.info("Running sigprofiler on whole {tag} screens".format(tag=tag))
     if test:
         phenotype = phenotypes[0]
-        print("---testing system with phenotype {phen}---".format(phen=phenotype))
+        log.info("Testing system with phenotype {phen}".format(phen=phenotype))
         Analyze.cosmic_fit(name_of_phenotype_directory(output_dir, phenotype),
-                           name_of_phenotype_directory(output_dir, phenotype) + "_results" + tag,
+                           name_of_phenotype_directory(output_dir, phenotype) + "_results",
                            input_type="vcf",
                            context_type="96",
                            collapse_to_SBS96=True,
                            cosmic_version=3.4,
                            exome=exome,
                            genome_build="GRCh38")
-        print("---Successfully run sigprofiler for phenotype {phen}---".format(phen=phenotype))
+        log.info("Successfully run sigprofiler for phenotype {phen}".format(phen=phenotype))
         return
     i = 0
+    errors = 0
     for phenotype in phenotypes:
         i += 1
-        print("---{n}---{phen}---".format(n=i, phen=phenotype))
-        Analyze.cosmic_fit(name_of_phenotype_directory(output_dir, phenotype),
-                           name_of_phenotype_directory(output_dir, phenotype) + "_results" + tag,
-                           input_type="vcf",
-                           context_type="96",
-                           collapse_to_SBS96=True,
-                           cosmic_version=3.4,
-                           exome=exome,
-                           genome_build="GRCh38")
-        print("---Successfully run sigprofiler for phenotype {phen}---".format(phen=phenotype))
+        log.info("{n}---{phen}".format(n=i, phen=phenotype))
+        log.info(name_of_phenotype_directory(output_dir, phenotype))
+        try:
+            Analyze.cosmic_fit(name_of_phenotype_directory(output_dir, phenotype),
+                               name_of_phenotype_directory(output_dir, phenotype) + "_results",
+                               input_type="vcf",
+                               context_type="96",
+                               collapse_to_SBS96=True,
+                               cosmic_version=3.4,
+                               exome=exome,
+                               genome_build="GRCh38")
+            log.info("Successfully run sigprofiler for phenotype {phen}".format(phen=phenotype))
+        except:
+            errors += 1
+            print("---Failed to process phenotype {phen}---".format(phen=phenotype))
+            if errors == i and errors > 10:
+                print("---Stopping process due to bug---")
+                return
+            continue
     print("Success!")
 
 
@@ -132,18 +146,18 @@ def run(output_dir: str,
         genome_phenotypes = read_phenotypes(genome_dir)
         exome_phenotypes = read_phenotypes(exome_dir)
     if test:
-        print("---Testing code on the first phenotype in the whole genome screens collection---")
+        print("Testing code on the first phenotype in the whole genome screens collection")
         find_mutational_signatures(phenotypes=genome_phenotypes,
                                    output_dir=genome_dir,
                                    exome=False,
                                    test=test)
         return
-    find_mutational_signatures(phenotypes=exome_phenotypes,
-                               output_dir=exome_dir,
-                               exome=True,
-                               test=False)
     find_mutational_signatures(phenotypes=genome_phenotypes,
                                output_dir=genome_dir,
+                               exome=False,
+                               test=False)
+    find_mutational_signatures(phenotypes=exome_phenotypes,
+                               output_dir=exome_dir,
                                exome=True,
                                test=False)
 
@@ -154,7 +168,7 @@ def list_samples_in_folder(folder_path):
 
     # Filter out directories, keeping only files
     files = [entry for entry in entries if os.path.isfile(os.path.join(folder_path, entry))]
-    samples = [file for file in files if file.startswith("COSS")]
+    samples = [folder_path + "/" + file for file in files if file.startswith("COSS")]
     return samples
 
 
@@ -167,3 +181,31 @@ def fix_vcf_bug(output_dir, exome=False):
         for sample in samples:
             df = pd.read_csv(sample, index_col=0, sep="\t")
             df.to_csv(sample, index=False, sep="\t")
+
+
+def run_specific(main_dir: str, phenotype: str, exome=False):
+    tag = get_tag(exome)
+    print("Testing {phenotype} in {output}".format(phenotype=phenotype, output=main_dir, tag=tag))
+    Analyze.cosmic_fit(name_of_phenotype_directory(main_dir, phenotype),
+                       name_of_phenotype_directory(main_dir, phenotype) + "results",
+                       input_type="vcf",
+                       context_type="96",
+                       collapse_to_SBS96=True,
+                       cosmic_version=3.4,
+                       exome=exome,
+                       genome_build="GRCh38")
+    print("Successfully run sigprofiler for phenotype {phen}".format(phen=phenotype))
+
+
+def run_large(main_dir: str, exome=False):
+    print("Running on all samples")
+    Analyze.cosmic_fit(main_dir,
+                       main_dir + "_results",
+                       input_type="vcf",
+                       context_type="96",
+                       collapse_to_SBS96=True,
+                       cosmic_version=3.4,
+                       exome=exome,
+                       genome_build="GRCh38",
+                       exclude_signature_subgroups=['Artifact_signatures'])
+    print("Successfully run sigprofiler on all samples")
