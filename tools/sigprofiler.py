@@ -211,6 +211,7 @@ def run_large(output_dir: str,
     genome_dir = get_specific_directory(output_dir, exome=False)
     if not from_vcf:
         if not cosmic_samples_address or not cosmic_gsm_address:
+            print("---Reading from filtered directories---")
             genome_gsm = read_from_file(get_specific_directory(filtered_gsm_address, exome=False) + ".tsv",
                                         "whole genome screens",
                                         index_col=0)
@@ -218,10 +219,15 @@ def run_large(output_dir: str,
                                        "whole exome screens",
                                        index_col=0)
         else:
+            print("---Filtering the GSM dataframe---")
             genome_gsm, exome_gsm = filter_gsm(cosmic_samples_address,
                                                cosmic_gsm_address,
                                                filtered_gsm_address)
+        print("---Creating vcfs from whole genome screens---")
         create_vcfs_from_gsm(genome_gsm, genome_dir)
+        print("---Creating vcfs from whole exome screens---")
         create_vcfs_from_gsm(exome_gsm, exome_dir)
+    print("---Analysing whole genome screens---")
     analyse_large(main_dir=genome_dir, exome=False)
+    print("---Analysing whole exome screens---")
     analyse_large(main_dir=exome_dir, exome=True)

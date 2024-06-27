@@ -33,7 +33,7 @@ class CosmicSamples:
             raise ValueError("Cannot create CosmicSample with no file information")
 
     def __filter_sample_dataframe(self, samples: pd.DataFrame):
-        print("---Restricting samples to whole genome/exome screens and primary tumour sources---")
+        print("---Restricting samples to whole genome/exome screens---")
         if self.genome and self.exome:
             samples = samples.loc[
                 ((samples[self.WHOLE_GENOME_SCREEN] == "y") | (samples[self.WHOLE_EXOME_SCREEN] == "y"))]
@@ -44,15 +44,17 @@ class CosmicSamples:
                 (samples[self.TUMOUR_SOURCE] == "primary")]
         else:
             samples = samples.loc[samples[self.TUMOUR_SOURCE] == "primary"]
+        print(samples.shape)
 
         if self.primary:
+            print("---Restricting samples to primary tumours---")
             samples = samples.loc(samples[self.TUMOUR_SOURCE] == "primary")
-        print(samples.shape)
+            print(samples.shape)
 
         if self.one_per_individual:
             print("---Restricting data to one sample per individual---")
             samples.drop_duplicates([self.INDIVIDUAL_ID], inplace=True)
-        print(samples.shape)
+            print(samples.shape)
 
         return samples
 
