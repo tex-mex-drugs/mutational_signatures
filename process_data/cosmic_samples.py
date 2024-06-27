@@ -40,8 +40,7 @@ class CosmicSamples:
         elif self.genome or self.exome:
             condition = self.WHOLE_GENOME_SCREEN if self.genome else self.WHOLE_EXOME_SCREEN
             samples = samples.loc[
-                (samples[condition] == "y") &
-                (samples[self.TUMOUR_SOURCE] == "primary")]
+                (samples[condition] == "y")]
         else:
             samples = samples.loc[samples[self.TUMOUR_SOURCE] == "primary"]
         print(samples.shape)
