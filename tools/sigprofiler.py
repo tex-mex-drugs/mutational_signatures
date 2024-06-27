@@ -15,8 +15,10 @@ log = Log("../mutational_signatures.log")
 def filter_gsm(cosmic_samples_address: str,
                cosmic_gsm_address: str,
                filtered_gsm_output_address=""):
-    genome_samples = CosmicSamples(cosmic_samples_address, genome=True, exome=False)
-    exome_samples = CosmicSamples(cosmic_samples_address, genome=False, exome=True)
+    genome_samples = CosmicSamples(cosmic_samples_address, genome=True, exome=False, primary=False,
+                                   one_per_individual=False)
+    exome_samples = CosmicSamples(cosmic_samples_address, genome=False, exome=True, primary=False,
+                                  one_per_individual=False)
     gsm_verify(cosmic_gsm_address)
     log.info("Reading whole genome screens from file")
     genome_gsm = read_gsm_from_file(cosmic_gsm_address,
@@ -65,7 +67,7 @@ def turn_gsm_into_vcfs(filtered_gsm: pd.DataFrame,
     if test:
         phenotypes = phenotypes[:1]
     log.info("Creating a vcf file for each sample")
-    create_vcfs_from_gsm(filtered_gsm, output_dir, phenotypes)
+    create_phenotype_vcfs_from_gsm(filtered_gsm, output_dir, phenotypes)
     with open(get_phenotypes_location(output_dir), 'w') as file:
         json.dump(phenotypes, file)
     return phenotypes
@@ -172,17 +174,6 @@ def list_samples_in_folder(folder_path):
     return samples
 
 
-def fix_vcf_bug(output_dir, exome=False):
-    main_dir = output_dir + "_" + get_tag(exome)
-    phenotypes = read_phenotypes(main_dir)
-    for phenotype in phenotypes:
-        folder = main_dir + "/" + phenotype
-        samples = list_samples_in_folder(folder)
-        for sample in samples:
-            df = pd.read_csv(sample, index_col=0, sep="\t")
-            df.to_csv(sample, index=False, sep="\t")
-
-
 def run_specific(main_dir: str, phenotype: str, exome=False):
     tag = get_tag(exome)
     print("Testing {phenotype} in {output}".format(phenotype=phenotype, output=main_dir, tag=tag))
@@ -197,7 +188,7 @@ def run_specific(main_dir: str, phenotype: str, exome=False):
     print("Successfully run sigprofiler for phenotype {phen}".format(phen=phenotype))
 
 
-def run_large(main_dir: str, exome=False):
+def analyse_large(main_dir: str, exome=False):
     print("Running on all samples")
     Analyze.cosmic_fit(main_dir,
                        main_dir + "_results",
@@ -209,3 +200,28 @@ def run_large(main_dir: str, exome=False):
                        genome_build="GRCh38",
                        exclude_signature_subgroups=['Artifact_signatures'])
     print("Successfully run sigprofiler on all samples")
+
+
+def run_large(output_dir: str,
+              cosmic_samples_address="",
+              cosmic_gsm_address="",
+              filtered_gsm_address="",
+              from_vcf=False):
+    exome_dir = get_specific_directory(output_dir, exome=True)
+    genome_dir = get_specific_directory(output_dir, exome=False)
+    if not from_vcf:
+        if not cosmic_samples_address or not cosmic_gsm_address:
+            genome_gsm = read_from_file(get_specific_directory(filtered_gsm_address, exome=False) + ".tsv",
+                                        "whole genome screens",
+                                        index_col=0)
+            exome_gsm = read_from_file(get_specific_directory(filtered_gsm_address, exome=True) + ".tsv",
+                                       "whole exome screens",
+                                       index_col=0)
+        else:
+            genome_gsm, exome_gsm = filter_gsm(cosmic_samples_address,
+                                               cosmic_gsm_address,
+                                               filtered_gsm_address)
+        create_vcfs_from_gsm(genome_gsm, genome_dir)
+        create_vcfs_from_gsm(exome_gsm, exome_dir)
+    analyse_large(main_dir=genome_dir, exome=False)
+    analyse_large(main_dir=exome_dir, exome=True)

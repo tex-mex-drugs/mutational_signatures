@@ -1,5 +1,6 @@
 import os
 import shutil
+import pandas as pd
 
 
 def move_samples_to_one_folder(old_dir: str, new_dir):
@@ -19,3 +20,12 @@ def move_samples_to_one_folder(old_dir: str, new_dir):
         src_file = os.path.join(folder, file)
         dst_file = os.path.join(new_dir, file)
         shutil.copy2(src_file, dst_file)
+
+
+def add_sample_name_as_column(output_dir):
+    entries = os.listdir(output_dir)
+    for entry in entries:
+        file = os.path.join(output_dir, entry)
+        df = pd.read_csv(file, sep="\t")
+        df["FILTER"] = entry[:-4:]
+        df.to_csv(file, index=False, sep="\t")

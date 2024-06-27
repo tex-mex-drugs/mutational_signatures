@@ -6,12 +6,20 @@ from pandas_tools.data import read_from_file, deal_with_data
 
 
 class CosmicSamples:
-    def __init__(self, input_file="", output_file="", genome=True, exome=True):
+    def __init__(self,
+                 input_file="",
+                 output_file="",
+                 genome=True,
+                 exome=True,
+                 primary=True,
+                 one_per_individual=True):
         CosmicSamples.verify(input_file, output_file)
         self.input_file = input_file
         self.output_file = output_file
         self.genome = genome
         self.exome = exome
+        self.primary = primary
+        self.one_per_individual = one_per_individual
 
     WHOLE_GENOME_SCREEN = "WHOLE_GENOME_SCREEN"
     WHOLE_EXOME_SCREEN = "WHOLE_EXOME_SCREEN"
@@ -28,8 +36,7 @@ class CosmicSamples:
         print("---Restricting samples to whole genome/exome screens and primary tumour sources---")
         if self.genome and self.exome:
             samples = samples.loc[
-                ((samples[self.WHOLE_GENOME_SCREEN] == "y") | (samples[self.WHOLE_EXOME_SCREEN] == "y")) &
-                (samples[self.TUMOUR_SOURCE] == "primary")]
+                ((samples[self.WHOLE_GENOME_SCREEN] == "y") | (samples[self.WHOLE_EXOME_SCREEN] == "y"))]
         elif self.genome or self.exome:
             condition = self.WHOLE_GENOME_SCREEN if self.genome else self.WHOLE_EXOME_SCREEN
             samples = samples.loc[
@@ -37,10 +44,14 @@ class CosmicSamples:
                 (samples[self.TUMOUR_SOURCE] == "primary")]
         else:
             samples = samples.loc[samples[self.TUMOUR_SOURCE] == "primary"]
+
+        if self.primary:
+            samples = samples.loc(samples[self.TUMOUR_SOURCE] == "primary")
         print(samples.shape)
 
-        print("---Restricting data to one sample per individual---")
-        samples.drop_duplicates([self.INDIVIDUAL_ID], inplace=True)
+        if self.one_per_individual:
+            print("---Restricting data to one sample per individual---")
+            samples.drop_duplicates([self.INDIVIDUAL_ID], inplace=True)
         print(samples.shape)
 
         return samples
