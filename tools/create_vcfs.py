@@ -58,7 +58,7 @@ def create_vcfs_from_gsm(filtered_gsm: pd.DataFrame, start_directory: str):
     if not os.path.isdir(start_directory):
         print("ERROR---{dir} is not a valid directory---".format(dir=start_directory))
         return
-    samples = filtered_gsm[[GSM.COSMIC_SAMPLE_ID]].drop_duplicates().to_list()
+    samples = filtered_gsm[[GSM.COSMIC_SAMPLE_ID]].drop_duplicates()[GSM.COSMIC_SAMPLE_ID].to_list()
     print("---Creating vcfs for all samples---")
     for sample in samples:
         sample_file = "{folder}/{sample}.vcf".format(folder=start_directory, sample=sample)
