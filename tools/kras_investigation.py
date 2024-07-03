@@ -87,17 +87,20 @@ def run(samples_address: str,
     aggregate_dir = os.path.join(write_directory, "aggregates")
     os.mkdir(aggregate_dir)
     directories = [aggregate_dir]
-    for phenotype in phenotypes.items():
-        sample_ids = get_samples_of_a_phenotype(phenotype[1], samples.filter_original_samples())
+    for phenotype_info in phenotypes.items():
+        sample_ids = get_samples_of_a_phenotype(phenotype_info[1], samples.filter_original_samples())
+        print("---Dividing phenotype groups by KRAS G12 mutation types---")
         mutations = split_by_mutation(gsm, sample_ids)
         for item in mutations.items():
-            group_name = "{phen}_{mut}".format(phen=phenotype, mut=item[0])
+            group_name = "{phen}_{mut}".format(phen=phenotype_info[0], mut=item[0])
             groups[group_name] = item[1]
             directories.append(os.path.join(write_directory, group_name))
+            print("---Creating aggregate vcf for {group}---".format(group=group_name))
             create_aggregate_vcf_from_samples(gsm,
                                               item[1],
                                               group_name,
                                               os.path.join(aggregate_dir, group_name + ".vcf"))
+    print("---Creating vcf folders for phenotype_mutation groups---")
     create_group_vcfs_from_gsm(gsm, write_directory, groups)
     for directory in directories:
         print("---Running sigprofiler in {dir}---".format(dir=directory))
