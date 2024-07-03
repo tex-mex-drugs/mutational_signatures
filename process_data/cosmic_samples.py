@@ -12,7 +12,8 @@ class CosmicSamples:
                  genome=True,
                  exome=True,
                  primary=True,
-                 one_per_individual=True):
+                 one_per_individual=True,
+                 phenotypes=None):
         CosmicSamples.verify(input_file, output_file)
         self.input_file = input_file
         self.output_file = output_file
@@ -20,12 +21,14 @@ class CosmicSamples:
         self.exome = exome
         self.primary = primary
         self.one_per_individual = one_per_individual
+        self.phenotypes = phenotypes
 
     WHOLE_GENOME_SCREEN = "WHOLE_GENOME_SCREEN"
     WHOLE_EXOME_SCREEN = "WHOLE_EXOME_SCREEN"
     TUMOUR_SOURCE = "TUMOUR_SOURCE"
     INDIVIDUAL_ID = "INDIVIDUAL_ID"
     COSMIC_SAMPLE_ID = "COSMIC_SAMPLE_ID"
+    COSMIC_PHENOTYPE_ID = "COSMIC_PHENOTYPE_ID"
 
     @staticmethod
     def verify(input_file="", output_file=""):
@@ -53,6 +56,11 @@ class CosmicSamples:
         if self.one_per_individual:
             print("---Restricting data to one sample per individual---")
             samples.drop_duplicates([self.INDIVIDUAL_ID], inplace=True)
+            print(samples.shape)
+
+        if self.phenotypes:
+            print("---Filtering data by phenotypes---")
+            samples = samples.loc(samples[self.COSMIC_PHENOTYPE_ID].isin(self.phenotypes))
             print(samples.shape)
 
         return samples
