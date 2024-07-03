@@ -60,7 +60,7 @@ class CosmicSamples:
 
         if self.phenotypes:
             print("---Filtering data by phenotypes---")
-            samples = samples.loc(samples[self.COSMIC_PHENOTYPE_ID].isin(self.phenotypes))
+            samples = samples.loc[samples[self.COSMIC_PHENOTYPE_ID].isin(self.phenotypes)]
             print(samples.shape)
 
         return samples
