@@ -50,7 +50,7 @@ class CosmicSamples:
 
         if self.primary:
             print("---Restricting samples to primary tumours---")
-            samples = samples.loc(samples[self.TUMOUR_SOURCE] == "primary")
+            samples = samples.loc[samples[self.TUMOUR_SOURCE] == "primary"]
             print(samples.shape)
 
         if self.one_per_individual:
