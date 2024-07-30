@@ -120,7 +120,7 @@ def main():
             if name not in all_results:
                 print(cancer_type, file)
                 try:
-                    fit_file(file, cancer_type, data_dir)
+                    fit_file(file, cancer_type, data_dir, analysis_dir)
                     process_results(cancer_type, file, data_dir, analysis_dir)
                     print(f'Success for {cancer_type} {file}')
                 except KeyboardInterrupt:
