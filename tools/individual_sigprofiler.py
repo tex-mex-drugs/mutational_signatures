@@ -103,22 +103,12 @@ def process_results(cancer_type, file, data_dir, analysis_dir):
 def main():
     genInstall.install('GRCh38')
     cancer_types = [
-     'lung_WT',
-     'lung_G12D',
-     'lung_G12R',
-     'lung_G12V',
-     'lung_G12V_results',
-     'large_intestine_WT',
-     'large_intestine_G12D',
-     'pancreas_G12V',
-     'large_intestine_G12C',
-     'large_intestine_G12R',
-     'pancreas_WT',
-     'pancreas_G12C',
-     'large_intestine_G12V',
-     'lung_G12C']
+     'lymphoid_WT',
+     'lymphoid_G12D',
+     'lymphoid_G12V',
+     ]
     analysis_dir = '/home/skw24/krasm'
-    data_dir = '/home/skw24/cathy/kras'
+    data_dir = '/home/skw24/cathy/kras/lymphoid'
     all_results_path = os.path.join(analysis_dir, "all_results.json")
 
     for cancer_type in cancer_types:
