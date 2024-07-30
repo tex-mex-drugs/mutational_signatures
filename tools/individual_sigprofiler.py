@@ -64,9 +64,9 @@ def fit_file(file, cancer_type, data_dir, analysis_dir):
                        genome_build="GRCh38")
 
 
-def process_results(cancer_type, file, data_dir, analysis_dir):
+def process_results(cancer_type, file, analysis_dir):
     sep = '####################################### Composition After Add-Remove #######################################\n'
-    all_results = os.path.join(data_dir, "all_results")
+    all_results = os.path.join(analysis_dir, "all_results")
     result = os.path.join(all_results,
                           'Assignment_Solution/Solution_Stats/Assignment_Solution_Signature_Assignment_log.txt')
     with open(result) as f:
@@ -121,7 +121,7 @@ def main():
                 print(cancer_type, file)
                 try:
                     fit_file(file, cancer_type, data_dir, analysis_dir)
-                    process_results(cancer_type, file, data_dir, analysis_dir)
+                    process_results(cancer_type, file, analysis_dir)
                     print(f'Success for {cancer_type} {file}')
                 except KeyboardInterrupt:
                     break
