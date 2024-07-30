@@ -2,8 +2,6 @@ import json
 import os
 
 import pandas as pd
-from SigProfilerAssignment import Analyzer as Analyze
-
 from data_frame_columns.Cosmic import GSM
 from process_data.cosmic_GSM import gsm_verify, read_gsm_from_file
 from process_data.cosmic_samples import CosmicSamples
@@ -21,13 +19,9 @@ def read_phenotypes(output_dir):
 
 def get_phenotypes(classification_address: str):
     df = pd.read_csv(classification_address, sep="\t")
-    lung = df.loc[(df["PRIMARY_SITE"] == "lung") &
-                  (df["HISTOLOGY_SUBTYPE_1"] == "adenocarcinoma")]["COSMIC_PHENOTYPE_ID"].to_list()
-    large_intestine = df.loc[(df["PRIMARY_SITE"] == "large_intestine")]["COSMIC_PHENOTYPE_ID"].to_list()
-    pancreas = df.loc[(df["PRIMARY_SITE"] == "pancreas") &
-                      (df["PRIMARY_HISTOLOGY"] == "carcinoma") &
-                      (df["HISTOLOGY_SUBTYPE_1"] == "ductal_carcinoma")]["COSMIC_PHENOTYPE_ID"].to_list()
-    return {"lung": lung, "large_intestine": large_intestine, "pancreas": pancreas}
+    lymphoid = df.loc[(df["PRIMARY_SITE"] == "haematopoietic_and_lymphoid_tissue") &
+                      (df["PRIMARY_HISTOLOGY"] == "lymphoid_neoplasm")]["COSMIC_PHENOTYPE_ID"].to_list()
+    return {"lymphoid": lymphoid}
 
 
 def split_by_mutation(gsm: pd.DataFrame, samples_of_a_phenotype: list):
@@ -102,15 +96,3 @@ def run(samples_address: str,
                                               os.path.join(aggregate_dir, group_name + ".vcf"))
     print("---Creating vcf folders for phenotype_mutation groups---")
     create_group_vcfs_from_gsm(gsm, write_directory, groups)
-    for directory in directories:
-        print("---Running sigprofiler in {dir}---".format(dir=directory))
-        Analyze.cosmic_fit(directory,
-                           directory + "_results",
-                           input_type="vcf",
-                           context_type="96",
-                           collapse_to_SBS96=True,
-                           cosmic_version=3.4,
-                           exome=True,
-                           genome_build="GRCh38",
-                           exclude_signature_subgroups=['Artifact_signatures'])
-
