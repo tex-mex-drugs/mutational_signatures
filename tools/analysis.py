@@ -40,9 +40,7 @@ class DataHandler:
 
         self.data_dir = data_dir
         self.analysis_dir = analysis_dir
-
-    def get_and_check_cancer_types(self):
-        cancer_types = ['pancreas_G12D',
+        self.three_cancers = ['pancreas_G12D',
                         'pancreas_G12R',
                         'lung_WT',
                         'lung_G12D',
@@ -58,6 +56,10 @@ class DataHandler:
                         'pancreas_G12C',
                         'large_intestine_G12V',
                         'lung_G12C']
+        self.lymph = ['lymphoid_WT', 'lymphoid_G12C', 'lymphoid_G12D', 'lymphoid_G12R', 'lymphoid_G12V']
+
+    def get_and_check_cancer_types(self, cancers: list):
+        cancer_types = cancers
         keys = list(self.results.keys())
         cancer_results = [DataHandler.take_off_one(i) for i in keys]
         counts = dict([(i, cancer_results.count(i)) for i in cancer_results])
@@ -107,7 +109,7 @@ class DataHandler:
         df2_shortened = dataframe2.loc[non_zeros].T
         return df1_shortened, df2_shortened
 
-    def run(self):
+    def run(self,cancers):
         self.paths = Paths(self.data_dir, self.analysis_dir)
 
         with open(self.paths.results) as f:
@@ -116,7 +118,7 @@ class DataHandler:
         with open(self.paths.errors) as f:
             self.errors = json.load(f)
 
-        self.cancer_types = self.get_and_check_cancer_types()
+        self.cancer_types = self.get_and_check_cancer_types(cancers)
 
         self.results_dataframe = self.make_results_dataframe()
 
